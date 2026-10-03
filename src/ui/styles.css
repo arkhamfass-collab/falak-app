@@ -1,0 +1,298 @@
+:root {
+  --bg: #f4f6f9;
+  --bg-elevated: #ffffff;
+  --text: #16213a;
+  --text-muted: #5b6980;
+  --accent: #0b6e4f;
+  --accent-contrast: #ffffff;
+  --border: #dde3ec;
+  --header-bg: #0b2033;
+  --header-text: #f4f6f9;
+  --header-muted: #9fb3cc;
+  --card-shadow: 0 1px 3px rgba(20, 30, 50, 0.08);
+  --danger: #b3261e;
+  --gold: #c99a2e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1420;
+    --bg-elevated: #152033;
+    --text: #e8edf6;
+    --text-muted: #93a3bd;
+    --accent: #2fb380;
+    --accent-contrast: #06130c;
+    --border: #243049;
+    --header-bg: #070e18;
+    --header-text: #e8edf6;
+    --header-muted: #7f93b3;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --gold: #e0b94a;
+    color-scheme: dark;
+  }
+}
+
+/* اختيار صريح للوضع الداكن (مثلا من مضيف يستضيف الصفحة ويتحكم بالسمة) يتفوق على تفضيل النظام */
+:root[data-theme="dark"] {
+  --bg: #0d1420;
+  --bg-elevated: #152033;
+  --text: #e8edf6;
+  --text-muted: #93a3bd;
+  --accent: #2fb380;
+  --accent-contrast: #06130c;
+  --border: #243049;
+  --header-bg: #070e18;
+  --header-text: #e8edf6;
+  --header-muted: #7f93b3;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --gold: #e0b94a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cairo', 'Tahoma', 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* مساحة للشريط السفلي الثابت */
+  min-height: 100vh;
+}
+
+h2, h3 { margin: 0 0 .5em; }
+
+.app-header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 14px 16px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+}
+
+.clock-block { display: flex; flex-direction: column; align-items: flex-start; min-width: 140px; }
+.clock-now { font-size: clamp(28px, 7vw, 40px); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.weekday-now { color: var(--header-muted); font-size: 13px; margin-top: 2px; }
+
+.dates-block { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--header-muted); flex: 1; min-width: 160px; }
+.dates-block .date-line.hijri { color: var(--gold); font-weight: 600; }
+
+.header-actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.location-summary {
+  font-size: 12px;
+  color: var(--header-muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icon-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--header-text);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+}
+.icon-btn:hover { background: rgba(255,255,255,.16); }
+
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 1 0 auto;
+  white-space: nowrap;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+main { padding: 14px 16px 24px; max-width: 760px; margin: 0 auto; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn .15s ease-in; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.panel-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+
+.prayer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.prayer-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--card-shadow);
+}
+.prayer-card .pname { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.prayer-card .ptime { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.prayer-card.current { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated)); }
+
+.hint { font-size: 12.5px; color: var(--text-muted); line-height: 1.7; margin-top: 10px; }
+
+.data-group {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--card-shadow);
+}
+.data-group h3 {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.kv span { color: var(--text-muted); }
+.kv b { font-weight: 700; font-variant-numeric: tabular-nums; text-align: left; direction: ltr; unicode-bidi: isolate; }
+/* قيم نصية عربية صرفة (اسم الطور) تبقى بالاتجاه العادي لا بالعزل اللاتيني */
+.kv b.rtl-value { direction: rtl; text-align: right; }
+
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border);
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 20;
+}
+
+.action-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.action-btn.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.action-btn:hover { filter: brightness(1.05); }
+.action-btn:active { transform: translateY(1px); }
+
+.switch-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+.switch-label input { width: 16px; height: 16px; }
+
+.reader-status { font-size: 12px; color: var(--text-muted); margin-inline-start: auto; }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(5, 10, 20, .55);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 50;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--bg-elevated);
+  width: 100%;
+  max-width: 480px;
+  max-height: 86vh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+}
+@media (min-width: 560px) {
+  .modal-overlay { align-items: center; }
+  .modal-box { border-radius: 16px; }
+}
+.modal-box h3 { margin-top: 18px; font-size: 14px; color: var(--accent); }
+.field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field-row label { font-size: 12.5px; color: var(--text-muted); }
+.field-row input, .field-row select {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+/* حقول الأرقام ترث dir="rtl" من الصفحة فيظهر علامة السالب بعد الرقم ("18-" بدل "-18") -
+   نفرض LTR داخل الحقل نفسه (مع إبقاء محاذاته يمينا ليتماشى بصريا مع تدفق النموذج العربي).
+   .signed-decimal حقول نصية (لا type="number") لحقول قد تحتاج قيمة سالبة - انظر التعليق
+   في app.js (wireSignedDecimalInput) لسبب تفادي type="number" لها تحديدا. */
+.field-row input[type="number"],
+.field-row input.signed-decimal {
+  direction: ltr;
+  text-align: right;
+}
+
+/* صفّ الحقل الذي يرافقه زر "±" (انظر التعليق في app.js لماذا هذا الزر ضروري وليس تزيينا) */
+.signed-input-row { display: flex; gap: 6px; align-items: stretch; }
+.signed-input-row input { flex: 1 1 auto; min-width: 0; }
+.sign-toggle {
+  flex: 0 0 auto;
+  width: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.sign-toggle.negative { color: var(--danger); }
+.sign-toggle:active { transform: translateY(1px); }
+.radio-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; font-size: 13.5px; }
+.radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.hidden { display: none !important; }
+
+@media (max-width: 420px) {
+  .clock-now { font-size: 30px; }
+  .header-actions { order: 3; width: 100%; justify-content: space-between; margin-inline-start: 0; }
+}

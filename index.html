@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2033">
+<title>الحاسبة الفلكية الشرعية</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="public/icon-512.png" sizes="512x512" type="image/png">
+<link rel="icon" href="public/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="public/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="public/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="clock-block">
+    <div id="clockNow" class="clock-now">--:--:--</div>
+    <div id="weekdayNow" class="weekday-now">—</div>
+  </div>
+  <div class="dates-block">
+    <div id="hijriNow" class="date-line hijri">هجري: —</div>
+    <div id="gregorianNow" class="date-line gregorian">ميلادي: —</div>
+  </div>
+  <div class="header-actions">
+    <div id="locationSummary" class="location-summary" title="الموقع الحالي">—</div>
+    <button id="btnSettings" class="icon-btn" aria-label="الإعدادات" title="الإعدادات">⚙</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" data-tab="tab-time" role="tab" aria-selected="true">الصلاة والوقت</button>
+  <button class="tab-btn" data-tab="tab-sun" role="tab" aria-selected="false">الشمس</button>
+  <button class="tab-btn" data-tab="tab-moon" role="tab" aria-selected="false">القمر</button>
+  <button class="tab-btn" data-tab="tab-sidereal" role="tab" aria-selected="false">الوقت النجمي</button>
+</nav>
+
+<main>
+
+  <section id="tab-time" class="tab-panel active">
+    <h2 class="panel-title">مواقيت الصلاة</h2>
+    <div id="prayerGrid" class="prayer-grid">
+      <div class="prayer-card" data-k="fajr"><span class="pname">الفجر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="sunrise"><span class="pname">الشروق</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="dhuhr"><span class="pname">الظهر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="asr"><span class="pname">العصر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="maghrib"><span class="pname">المغرب</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="isha"><span class="pname">العشاء</span><span class="ptime">—</span></div>
+    </div>
+    <p class="hint">طريقة الحساب: فجر بزاوية <span id="hintFajrAngle">-18°</span>، عصر بمذهب <span id="hintAsrMethod">الجمهور</span>، عشاء بعد المغرب بـ<span id="hintIshaOffset">90</span> دقيقة. يمكن تعديل هذه القيم من الإعدادات ⚙.</p>
+  </section>
+
+  <section id="tab-sun" class="tab-panel">
+    <h2 class="panel-title">بيانات الشمس</h2>
+
+    <div class="data-group">
+      <h3>الإحداثيات البروجية (السماوية)</h3>
+      <div class="kv"><span>الطول البروجي</span><b data-f="sun.ecl.lon">—</b></div>
+      <div class="kv"><span>البعد عن الأرض</span><b data-f="sun.ecl.dist">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الإحداثيات الاستوائية</h3>
+      <div class="kv"><span>المطلع المستقيم</span><b data-f="sun.eq.ra">—</b></div>
+      <div class="kv"><span>الميل</span><b data-f="sun.eq.dec">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الإحداثيات الأفقية (الآن)</h3>
+      <div class="kv"><span>الارتفاع</span><b data-f="sun.hz.alt">—</b></div>
+      <div class="kv"><span>السمت</span><b data-f="sun.hz.az">—</b></div>
+      <div class="kv"><span>الزاوية الساعية</span><b data-f="sun.hz.ha">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الشروق والزوال والغروب</h3>
+      <div class="kv"><span>الشروق</span><b data-f="sun.rts.rise">—</b></div>
+      <div class="kv"><span>الزوال</span><b data-f="sun.rts.transit">—</b></div>
+      <div class="kv"><span>الغروب</span><b data-f="sun.rts.set">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الظل (لعود ارتفاعه <span data-f="sun.gnomon">60</span> سم)</h3>
+      <div class="kv"><span>ظل الزوال</span><b data-f="sun.shadowZawal">—</b></div>
+      <div class="kv"><span>ظل الوقت الحالي</span><b data-f="sun.shadowNow">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>طول النهار والليل</h3>
+      <div class="kv"><span>طول النهار</span><b data-f="sun.dayLen">—</b></div>
+      <div class="kv"><span>طول الليل</span><b data-f="sun.nightLen">—</b></div>
+    </div>
+  </section>
+
+  <section id="tab-moon" class="tab-panel">
+    <h2 class="panel-title">بيانات القمر</h2>
+
+    <div class="data-group">
+      <h3>الإحداثيات البروجية</h3>
+      <div class="kv"><span>الطول البروجي</span><b data-f="moon.ecl.lon">—</b></div>
+      <div class="kv"><span>العرض البروجي</span><b data-f="moon.ecl.lat">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الإحداثيات الاستوائية</h3>
+      <div class="kv"><span>المطلع المستقيم</span><b data-f="moon.eq.ra">—</b></div>
+      <div class="kv"><span>الميل</span><b data-f="moon.eq.dec">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الإحداثيات الأفقية (الآن)</h3>
+      <div class="kv"><span>الارتفاع</span><b data-f="moon.hz.alt">—</b></div>
+      <div class="kv"><span>السمت</span><b data-f="moon.hz.az">—</b></div>
+      <div class="kv"><span>الزاوية الساعية</span><b data-f="moon.hz.ha">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الشروق والعبور والغروب</h3>
+      <div class="kv"><span>الشروق</span><b data-f="moon.rts.rise">—</b></div>
+      <div class="kv"><span>العبور</span><b data-f="moon.rts.transit">—</b></div>
+      <div class="kv"><span>الغروب</span><b data-f="moon.rts.set">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>المطال والعمر والبعد والطور</h3>
+      <div class="kv"><span>المطال (عن الشمس)</span><b data-f="moon.elong">—</b></div>
+      <div class="kv"><span>العمر</span><b data-f="moon.age">—</b></div>
+      <div class="kv"><span>البعد عن الأرض</span><b data-f="moon.dist">—</b></div>
+      <div class="kv"><span>الطور الحالي</span><b data-f="moon.phase">—</b></div>
+      <div class="kv"><span>نسبة الإضاءة</span><b data-f="moon.illum">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3>الاقتران القادم (المحاق)</h3>
+      <div class="kv"><span>بالتوقيت العالمي UTC</span><b data-f="moon.nextNewUtc">—</b></div>
+      <div class="kv"><span>بالتوقيت المحلي</span><b data-f="moon.nextNewLocal">—</b></div>
+    </div>
+  </section>
+
+  <section id="tab-sidereal" class="tab-panel">
+    <h2 class="panel-title">الوقت النجمي</h2>
+    <div class="data-group">
+      <div class="kv"><span>GST0 — الوقت النجمي بغرينتش عند 0 سا عالمي</span><b data-f="sid.gst0">—</b></div>
+      <div class="kv"><span>GST — الوقت النجمي بغرينتش الآن</span><b data-f="sid.gst">—</b></div>
+      <div class="kv"><span>LST — الوقت النجمي المحلي</span><b data-f="sid.lst">—</b></div>
+    </div>
+    <p class="hint">GST0 يُحسب عند منتصف الليل بالتوقيت العالمي لليوم الحالي، وGST هو امتداده الدائر مع الزمن الآن بغرينتش، وLST هو GST مضافا إليه خط طول موقعكم شرقا (بالساعات).</p>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <button id="btnSpeakNow" class="action-btn">🔊 قراءة الآن</button>
+  <label class="switch-label">
+    <input type="checkbox" id="chkAutoRead" checked>
+    <span>القراءة الآلية كل نصف ساعة</span>
+  </label>
+  <span id="readerStatus" class="reader-status"></span>
+</footer>
+
+<!-- نافذة الإعدادات -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2>الإعدادات</h2>
+
+    <h3>الموقع الجغرافي</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="locMode" value="auto" checked> تحديد تلقائي</label>
+      <label><input type="radio" name="locMode" value="manual"> إدخال يدوي</label>
+    </div>
+
+    <div id="locAutoBlock">
+      <button id="btnDetectLocation" class="action-btn">📍 تحديد الموقع والمنطقة الزمنية تلقائيا</button>
+      <p id="autoLocResult" class="hint"></p>
+    </div>
+
+    <div id="locManualBlock" class="hidden">
+      <div class="field-row">
+        <label>خط العرض (شمالا +، جنوبا -)</label>
+        <div class="signed-input-row">
+          <button type="button" class="sign-toggle" data-for="inLat" aria-label="تبديل موجب/سالب">+</button>
+          <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inLat" value="21.3891">
+        </div>
+      </div>
+      <div class="field-row">
+        <label>خط الطول (شرقا +، غربا -)</label>
+        <div class="signed-input-row">
+          <button type="button" class="sign-toggle" data-for="inLon" aria-label="تبديل موجب/سالب">+</button>
+          <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inLon" value="39.8579">
+        </div>
+      </div>
+      <div class="radio-row">
+        <label><input type="radio" name="tzMode" value="tz" checked> منطقة زمنية (تراعي التوقيت الصيفي تلقائيا)</label>
+        <label><input type="radio" name="tzMode" value="offset"> إزاحة ثابتة عن UTC</label>
+      </div>
+      <div class="field-row" id="tzSelectRow">
+        <label>المنطقة الزمنية</label>
+        <select id="inTz"></select>
+      </div>
+      <div class="field-row hidden" id="tzOffsetRow">
+        <label>الإزاحة عن UTC بالساعات</label>
+        <div class="signed-input-row">
+          <button type="button" class="sign-toggle" data-for="inTzOffset" aria-label="تبديل موجب/سالب">+</button>
+          <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inTzOffset" value="3">
+        </div>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>طول عود الظل (سم)</label>
+      <input type="number" id="inGnomon" step="1" value="60">
+    </div>
+
+    <h3>مواقيت الصلاة</h3>
+    <div class="field-row">
+      <label>زاوية الفجر (تحت الأفق)</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inFajrAngle" aria-label="تبديل موجب/سالب">−</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inFajrAngle" value="-18">
+      </div>
+    </div>
+    <div class="field-row">
+      <label>مذهب العصر</label>
+      <select id="inAsrFactor">
+        <option value="1" selected>الجمهور (الشافعية/المالكية/الحنابلة)</option>
+        <option value="2">الحنفية</option>
+      </select>
+    </div>
+    <div class="radio-row">
+      <label><input type="radio" name="ishaMode" value="offsetAfterMaghrib" checked> العشاء بعد المغرب بعدد دقائق</label>
+      <label><input type="radio" name="ishaMode" value="angle"> العشاء بزاوية فلكية</label>
+    </div>
+    <div class="field-row" id="ishaOffsetRow">
+      <label>عدد الدقائق بعد المغرب</label>
+      <input type="number" id="inIshaOffset" step="1" value="90">
+    </div>
+    <div class="field-row hidden" id="ishaAngleRow">
+      <label>زاوية العشاء (تحت الأفق)</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inIshaAngle" aria-label="تبديل موجب/سالب">−</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inIshaAngle" value="-18">
+      </div>
+    </div>
+
+    <h3>القارئ الصوتي</h3>
+    <div class="field-row">
+      <label>صوت القراءة</label>
+      <select id="inVoice"></select>
+    </div>
+    <div class="field-row">
+      <label>سرعة النطق</label>
+      <input type="range" id="inRate" min="0.5" max="1.5" step="0.05" value="0.95">
+    </div>
+    <button type="button" id="btnTestVoice" class="action-btn">🔊 تجربة الصوت</button>
+    <p class="hint">جودة النطق تعتمد على الصوت العربي المثبَّت على جهازكم لا على التطبيق نفسه - إن توفر أكثر من صوت عربي جرّبوها هنا واختاروا الأوضح. تقليل السرعة قد يحسّن وضوح بعض الأصوات.</p>
+
+    <div class="modal-actions">
+      <button id="btnSaveSettings" class="action-btn primary">حفظ</button>
+      <button id="btnCloseSettings" class="action-btn">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
