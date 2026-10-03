@@ -66,6 +66,98 @@ export function joinArabicList (parts) {
   return p[0] + p.slice(1).map((x) => ' و' + x).join('')
 }
 
+// ------------------------- الأرقام فرنسيا (0-9999) -------------------------
+// ملاحظة: خلافا للعربية (حيث يأخذ المعدود 3-10 جنس العدد المعاكس)، التذكير/التأنيث الفرنسي
+// في الأعداد يقتصر عمليا على "un/une" (بما في ذلك مركّباتها: vingt et un/une، quatre-vingt-un/une)
+// - بقية الآحاد والعشرات ثابتة اللفظ بصرف النظر عن جنس المعدود، ما يجعل القاعدة الفرنسية هنا
+// أبسط بنيويا من العربية رغم اختلاف شكلها.
+
+const FR_ONES = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf']
+const FR_TEENS = ['dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf']
+const FR_TENS_WORDS = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante' }
+
+function frenchOnesWord (n, feminine) {
+  if (n === 1 && feminine) return 'une'
+  return FR_ONES[n]
+}
+
+/** يحوّل عددا بين 0 و99 إلى كلمات فرنسية، بمراعاة شواذّ 70-79 و80-99 المعروفة */
+function frenchUnder100 (n, feminine) {
+  if (n < 10) return frenchOnesWord(n, feminine)
+  if (n < 20) return FR_TEENS[n - 10]
+  const tens = Math.floor(n / 10)
+  const ones = n % 10
+  if (tens === 7 || tens === 9) {
+    // 70-79: soixante + (dix..dix-neuf)؛ 90-99: quatre-vingt + (dix..dix-neuf)
+    const base = tens === 7 ? 'soixante' : 'quatre-vingt'
+    if (tens === 7 && ones === 1) return base + ' et onze' // الاستثناء الوحيد هنا: 71
+    return base + '-' + FR_TEENS[ones]
+  }
+  if (tens === 8) {
+    if (ones === 0) return 'quatre-vingts' // "s" فقط عند التمام (لا يتبعها عدد آخر ضمن نفس الرقم)
+    return 'quatre-vingt-' + frenchOnesWord(ones, feminine)
+  }
+  const tensWord = FR_TENS_WORDS[tens]
+  if (ones === 0) return tensWord
+  if (ones === 1) return tensWord + ' et ' + (feminine ? 'une' : 'un') // vingt et un/une...
+  return tensWord + '-' + frenchOnesWord(ones, feminine)
+}
+
+/** يحوّل عددا صحيحا (موجبا أو سالبا، 0-9999) إلى كلمات فرنسية */
+export function frenchNumberToWords (n, { feminine = false } = {}) {
+  n = Math.round(n)
+  if (n === 0) return 'zéro'
+  if (n < 0) return 'moins ' + frenchNumberToWords(-n, { feminine })
+  if (n > 9999) return String(n) // خارج المدى المدعوم؛ يُترك رقما كما هو (احتياطي)
+
+  const thousands = Math.floor(n / 1000)
+  const remainder = n % 1000
+  const hundreds = Math.floor(remainder / 100)
+  const rest = remainder % 100
+
+  const parts = []
+  if (thousands > 0) {
+    parts.push(thousands === 1 ? 'mille' : frenchOnesWord(thousands, false) + ' mille')
+  }
+  if (hundreds > 0) {
+    if (hundreds === 1) parts.push('cent')
+    else parts.push(frenchOnesWord(hundreds, false) + (rest === 0 ? ' cents' : ' cent')) // "s" تُحذف إن تبعها رقم
+  }
+  if (rest > 0) {
+    parts.push(frenchUnder100(rest, feminine))
+  }
+  return parts.join(' ')
+}
+
+/** يربط عناصر فرنسية: فاصلة بين الكل، و"et" قبل الأخير فقط (الأسلوب الفرنسي الطبيعي للتعداد) */
+export function joinFrenchList (parts) {
+  const p = parts.filter(Boolean)
+  if (p.length === 0) return ''
+  if (p.length === 1) return p[0]
+  if (p.length === 2) return p[0] + ' et ' + p[1]
+  return p.slice(0, -1).join(', ') + ' et ' + p[p.length - 1]
+}
+
+/** @type {Object<string, {singular:string, plural:string, gender:'m'|'f'}>} */
+export const FRENCH_NOUN_FORMS = {
+  degree: { singular: 'degré', plural: 'degrés', gender: 'm' },
+  minute: { singular: 'minute', plural: 'minutes', gender: 'f' },
+  second: { singular: 'seconde', plural: 'secondes', gender: 'f' },
+  hour: { singular: 'heure', plural: 'heures', gender: 'f' },
+  day: { singular: 'jour', plural: 'jours', gender: 'm' },
+  km: { singular: 'kilomètre', plural: 'kilomètres', gender: 'm' },
+  cm: { singular: 'centimètre', plural: 'centimètres', gender: 'm' }
+}
+
+/** يُرجع عبارة "عدد + اسم معدود" فرنسيا بصيغتها الصحيحة (المفرد لـ0/1، الجمع لما فوق) */
+export function frenchCountedNoun (n, forms) {
+  const rounded = Math.round(n)
+  const absN = Math.abs(rounded)
+  if (absN === 0) return 'zéro ' + forms.singular
+  const words = frenchNumberToWords(absN, { feminine: forms.gender === 'f' })
+  return absN === 1 ? (words + ' ' + forms.singular) : (words + ' ' + forms.plural)
+}
+
 // ------------------------- تذكير المعدود (مبسَّط) -------------------------
 
 /** @typedef {{singular:string, dual:string, plural:string}} NounForms */
@@ -211,6 +303,183 @@ function nextNewMoonSentence (nextNewMoon) {
   return `الاقتران القادم - أي المحاق - يكون يوم ${utcPart}، أي يوم ${localPart}.`
 }
 
+// ------------------------- قراءة الزوايا والوقت فرنسيا -------------------------
+// نظائر فرنسية لدوال القراءة العربية أعلاه (dmsToArabicWords، hmsAngleToArabicWords،
+// hmsClockToArabicWords، hoursDecimalToArabicDuration، dateToClockWords، nextNewMoonSentence).
+// ملاحظة: الفرنسية لا تحتاج مصفوفة "ساعات ترتيبية" خاصة كالعربية (التاسعة، العاشرة...) - يكفي
+// العدد الأصلي ("il est neuf heures" لا "l'heure neuvième") فالقراءة هنا أبسط من ذلك الجانب.
+
+/** نظير dmsToArabicWords بالفرنسية */
+export function dmsToFrenchWords (deg, mode = 'plain') {
+  if (!Number.isFinite(deg)) return 'non disponible'
+  const sign = deg < 0 ? -1 : 1
+  const a = Math.abs(deg)
+  let d = Math.floor(a)
+  let mFull = (a - d) * 60
+  let m = Math.floor(mFull)
+  let s = Math.round((mFull - m) * 60)
+  if (s >= 60) { s -= 60; m += 1 }
+  if (m >= 60) { m -= 60; d += 1 }
+
+  const parts = [frenchCountedNoun(d, FRENCH_NOUN_FORMS.degree)]
+  if (m > 0 || s > 0) parts.push(frenchCountedNoun(m, FRENCH_NOUN_FORMS.minute))
+  if (s > 0) parts.push(frenchCountedNoun(s, FRENCH_NOUN_FORMS.second))
+  const magnitude = joinFrenchList(parts)
+
+  if (mode === 'latitude') return magnitude + (sign < 0 ? ' sud' : ' nord')
+  if (mode === 'longitude') return magnitude + (sign < 0 ? ' ouest' : ' est')
+  if (mode === 'declination') return magnitude + (sign < 0 ? ' sud' : ' nord')
+  if (mode === 'hourAngle') return (sign < 0 ? 'avant le passage au méridien de ' : 'après le passage au méridien de ') + magnitude
+  return (sign < 0 ? 'moins ' : '') + magnitude
+}
+
+/** نظير hmsAngleToArabicWords بالفرنسية (للمطلع المستقيم والزاوية الساعية، بالساعات-دقائق-ثواني) */
+export function hmsAngleToFrenchWords (deg, mode = 'plain') {
+  if (!Number.isFinite(deg)) return 'non disponible'
+  const degForConversion = (mode === 'hourAngle') ? deg : format.normalizeDeg360(deg)
+  const hoursDecimal = degForConversion / 15
+  const sign = hoursDecimal < 0 ? -1 : 1
+  const a = Math.abs(hoursDecimal)
+  let h = Math.floor(a)
+  let mFull = (a - h) * 60
+  let m = Math.floor(mFull)
+  let s = Math.round((mFull - m) * 60)
+  if (s >= 60) { s -= 60; m += 1 }
+  if (m >= 60) { m -= 60; h += 1 }
+
+  const parts = [frenchCountedNoun(h, FRENCH_NOUN_FORMS.hour)]
+  if (m > 0 || s > 0) parts.push(frenchCountedNoun(m, FRENCH_NOUN_FORMS.minute))
+  if (s > 0) parts.push(frenchCountedNoun(s, FRENCH_NOUN_FORMS.second))
+  const magnitude = joinFrenchList(parts)
+
+  if (mode === 'hourAngle') return (sign < 0 ? 'avant le passage au méridien de ' : 'après le passage au méridien de ') + magnitude
+  return magnitude
+}
+
+function periodOfDayFrench (hour24) {
+  if (hour24 >= 0 && hour24 < 4) return 'de la nuit'
+  if (hour24 >= 4 && hour24 < 12) return 'du matin'
+  if (hour24 === 12) return 'de midi'
+  if (hour24 > 12 && hour24 < 17) return "de l'après-midi"
+  if (hour24 >= 17 && hour24 < 20) return 'du soir'
+  return 'de la nuit'
+}
+
+/** نظير hmsClockToArabicWords بالفرنسية - يُرجع العبارة بلا "Il est" البادئة (يضيفها المستدعي
+ * حسب السياق: "Il est..." للوقت الحالي، أو "...à..." لوقت حدث مثل صلاة أو شروق) */
+export function hmsClockToFrenchWords (hour24, minute) {
+  const h12raw = hour24 % 12
+  const h12 = h12raw === 0 ? 12 : h12raw
+  const hourWords = frenchCountedNoun(h12, FRENCH_NOUN_FORMS.hour)
+  const period = periodOfDayFrench(hour24)
+  if (minute === 0) return `${hourWords} pile ${period}`
+  return `${hourWords} et ${frenchCountedNoun(minute, FRENCH_NOUN_FORMS.minute)} ${period}`
+}
+
+/** نظير hoursDecimalToArabicDuration بالفرنسية */
+export function hoursDecimalToFrenchDuration (hoursDecimal) {
+  if (!Number.isFinite(hoursDecimal)) return 'non disponible'
+  const totalMinutes = Math.round(hoursDecimal * 60)
+  const hh = Math.floor(totalMinutes / 60)
+  const mm = totalMinutes % 60
+  const hourPart = frenchCountedNoun(hh, FRENCH_NOUN_FORMS.hour)
+  if (mm === 0) return hourPart
+  return hourPart + ' et ' + frenchCountedNoun(mm, FRENCH_NOUN_FORMS.minute)
+}
+
+/** نظير dateToClockWords بالفرنسية (بلا "à" بادئة - يضيفها المستدعي) */
+function dateToClockWordsFrench (date, localPartsFn) {
+  if (!date) return "non atteint (l'astre ne passe pas par cette hauteur aujourd'hui)"
+  const parts = localPartsFn(date)
+  return hmsClockToFrenchWords(parts.hour, parts.minute)
+}
+
+/** نظير nextNewMoonSentence بالفرنسية */
+function nextNewMoonSentenceFrench (nextNewMoon) {
+  const u = nextNewMoon.utcDate
+  const l = nextNewMoon.local
+  const utcPart =
+    `${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)}, ` +
+    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes())} en temps universel (UTC)`
+  const localPart =
+    `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
+    `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
+  return `La prochaine conjonction - c'est-à-dire la nouvelle lune - aura lieu le ${utcPart}, soit le ${localPart}.`
+}
+
+/**
+ * يبني النص الفرنسي الكامل المُعَدّ للنطق من نتيجة engine.computeAll() - نظير كامل لـ
+ * buildNarrationScript العربية، بنفس الترتيب والمحتوى بالضبط.
+ */
+export function buildNarrationScriptFrench (r, localPartsFn) {
+  const sections = []
+
+  // 1) الوقت والتاريخان
+  sections.push(
+    `Il est ${hmsClockToFrenchWords(r.time.local.hour, r.time.local.minute)}. Nous sommes ${r.time.local.weekdayNameFrench}.`
+  )
+  sections.push(
+    `Date du calendrier hégirien : ${frenchNumberToWords(r.time.hijri.day)} ${r.time.hijri.monthNameFrench} de l'an ${frenchNumberToWords(r.time.hijri.year)} de l'hégire.`
+  )
+  sections.push(
+    `Date du calendrier grégorien : ${frenchNumberToWords(r.time.gregorian.day)} ${r.time.gregorian.monthNameFrench} ${frenchNumberToWords(r.time.gregorian.year)}.`
+  )
+
+  // 2) مواقيت الصلاة
+  const p = r.prayerTimes
+  sections.push(
+    "Horaires de prière aujourd'hui : " +
+    `Fajr à ${dateToClockWordsFrench(p.fajr, localPartsFn)}, ` +
+    `lever du soleil à ${dateToClockWordsFrench(p.sunrise, localPartsFn)}, ` +
+    `Dhuhr à ${dateToClockWordsFrench(p.dhuhr, localPartsFn)}, ` +
+    `Asr à ${dateToClockWordsFrench(p.asr, localPartsFn)}, ` +
+    `Maghrib à ${dateToClockWordsFrench(p.maghrib, localPartsFn)}, ` +
+    `et Isha à ${dateToClockWordsFrench(p.isha, localPartsFn)}.`
+  )
+
+  // 3) الشمس
+  const s = r.sun
+  sections.push(
+    'Données du Soleil : ' +
+    `longitude écliptique ${dmsToFrenchWords(s.ecliptic.longitudeDeg)}, distance à la Terre ${s.ecliptic.distanceAU.toFixed(4)} unités astronomiques. ` +
+    `Ascension droite ${hmsAngleToFrenchWords(s.equatorial.rightAscensionDeg)}, déclinaison ${dmsToFrenchWords(s.equatorial.declinationDeg, 'declination')}. ` +
+    `Hauteur actuelle ${dmsToFrenchWords(s.horizontal.altitudeDeg)}, azimut ${dmsToFrenchWords(s.horizontal.azimuthDeg)}, angle horaire ${hmsAngleToFrenchWords(s.horizontal.hourAngleDeg, 'hourAngle')}. ` +
+    `Lever à ${dateToClockWordsFrench(s.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(s.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(s.riseTransitSet.setDate, localPartsFn)}. ` +
+    (s.shadowAtZawalCm != null ? `La longueur de l'ombre au passage au méridien, pour un gnomon de ${frenchCountedNoun(s.gnomonCm, FRENCH_NOUN_FORMS.cm)}, est de ${s.shadowAtZawalCm.toFixed(1)} centimètres. ` : '') +
+    (s.shadowNowCm != null ? `La longueur de l'ombre actuelle est de ${s.shadowNowCm.toFixed(1)} centimètres. ` : "Le Soleil est actuellement sous l'horizon, il n'y a donc pas d'ombre. ") +
+    `Durée du jour ${hoursDecimalToFrenchDuration(s.dayLengthHours)}, durée de la nuit ${hoursDecimalToFrenchDuration(s.nightLengthHours)}.`
+  )
+
+  // 4) القمر
+  const m = r.moon
+  sections.push(
+    'Données de la Lune : ' +
+    `longitude écliptique ${dmsToFrenchWords(m.ecliptic.longitudeDeg)}, latitude écliptique ${dmsToFrenchWords(m.ecliptic.latitudeDeg, 'latitude')}. ` +
+    `Ascension droite ${hmsAngleToFrenchWords(m.equatorial.rightAscensionDeg)}, déclinaison ${dmsToFrenchWords(m.equatorial.declinationDeg, 'declination')}. ` +
+    `Hauteur actuelle ${dmsToFrenchWords(m.horizontal.altitudeDeg)}, azimut ${dmsToFrenchWords(m.horizontal.azimuthDeg)}, angle horaire ${hmsAngleToFrenchWords(m.horizontal.hourAngleDeg, 'hourAngle')}. ` +
+    `Lever à ${dateToClockWordsFrench(m.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(m.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(m.riseTransitSet.setDate, localPartsFn)}. ` +
+    `Élongation par rapport au Soleil ${dmsToFrenchWords(m.elongationDeg)}, âge ${m.ageDays.toFixed(1)} jours, distance à la Terre ${Math.round(m.distanceKm).toLocaleString('en-US')} kilomètres. ` +
+    `Phase actuelle : ${m.phaseNameFrench}, taux d'éclairement ${Math.round(m.illuminatedFraction * 100)} pour cent. ` +
+    nextNewMoonSentenceFrench(m.nextNewMoon)
+  )
+
+  // 5) الوقت النجمي
+  const sd = r.sidereal
+  const hmsWordsFr = (hoursDecimal) => {
+    const hh = Math.floor(hoursDecimal)
+    const mm = Math.floor((hoursDecimal - hh) * 60)
+    return hmsClockToFrenchWords(hh, mm)
+  }
+  sections.push(
+    'Enfin, le temps sidéral : ' +
+    `le temps sidéral de Greenwich à minuit temps universel était de ${hmsWordsFr(sd.gst0Hours)}. ` +
+    `Le temps sidéral actuel de Greenwich est de ${hmsWordsFr(sd.gstHours)}. ` +
+    `Et le temps sidéral local de votre position est actuellement de ${hmsWordsFr(sd.lstHours)}.`
+  )
+
+  return sections.join('\n\n')
+}
+
 // ------------------------- بناء نص القراءة الكامل -------------------------
 
 /**
@@ -219,7 +488,7 @@ function nextNewMoonSentence (nextNewMoon) {
  * @param {(utcDate:Date)=>{year:number,month:number,day:number,hour:number,minute:number,second:number}} localPartsFn
  *   دالة تحويل لحظة UTC إلى أجزاء محلية (مرّر timeutil.localPartsFromUTC مُقيَّدة بـobserverTime المستعمل)
  */
-export function buildNarrationScript (r, localPartsFn) {
+export function buildNarrationScriptArabic (r, localPartsFn) {
   const sections = []
 
   // 1) الوقت والتاريخان
@@ -288,16 +557,31 @@ export function buildNarrationScript (r, localPartsFn) {
   return sections.join('\n\n')
 }
 
+/**
+ * يبني نص القراءة الكامل باللغة المطلوبة (عربي افتراضيا، أو فرنسي) - نقطة الدخول الموحَّدة
+ * التي يستعملها app.js، فلا يحتاج استدعاؤها إلى معرفة وجود نسختين منفصلتين داخليا.
+ * @param {ReturnType<import('./engine.js').computeAll>} r
+ * @param {(utcDate:Date)=>{year:number,month:number,day:number,hour:number,minute:number,second:number}} localPartsFn
+ * @param {'ar'|'fr'} [lang='ar']
+ */
+export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
+  return lang === 'fr' ? buildNarrationScriptFrench(r, localPartsFn) : buildNarrationScriptArabic(r, localPartsFn)
+}
+
 // ------------------------- النطق عبر Web Speech API (متصفح فقط) -------------------------
 
 /**
- * ينطق نصا عربيا عبر Web Speech API إن توفرت (متصفح Chromium على ويندوز، أو متصفح أندرويد).
+ * ينطق نصا عبر Web Speech API إن توفرت (متصفح Chromium على ويندوز، أو متصفح أندرويد) - تعمل
+ * بأي لغة يدعمها متصفح الجهاز، عربية كانت أو فرنسية؛ المهم ألا يُخلَط نص لغة بصوت لغة أخرى
+ * (نص فرنسي بصوت عربي ينطق حروفا لا معنى لها، والعكس بالعكس) - لذا يُشتق مرشَّح اختيار الصوت
+ * الاحتياطي من lang نفسها لا من افتراض ثابت.
  * لا تأثير لها في بيئة بلا `window` (مثل بيئة الاختبار في Node) - تُرجع Promise تُرفض بهدوء.
  * @param {string} text
  * @param {{lang?:string, rate?:number, pitch?:number, voiceNameHint?:string}} [opts]
  */
-export function speakArabic (text, opts = {}) {
+export function speak (text, opts = {}) {
   const { lang = 'ar-SA', rate = 0.95, pitch = 1, voiceNameHint } = opts
+  const langPrefix = String(lang).slice(0, 2).toLowerCase()
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       reject(new Error('Web Speech API غير متوفرة في هذه البيئة'))
@@ -313,7 +597,7 @@ export function speakArabic (text, opts = {}) {
       const voices = synth.getVoices()
       let voice = null
       if (voiceNameHint) voice = voices.find((v) => v.name.includes(voiceNameHint))
-      if (!voice) voice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith('ar'))
+      if (!voice) voice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(langPrefix))
       if (voice) utter.voice = voice
     }
 
@@ -327,6 +611,11 @@ export function speakArabic (text, opts = {}) {
     utter.onerror = (e) => reject(e.error || e)
     synth.speak(utter)
   })
+}
+
+/** اسم قديم محفوظ للتوافق الخلفي (يستعمله أي كود سابق ما زال يستدعي speakArabic مباشرة) */
+export function speakArabic (text, opts = {}) {
+  return speak(text, { lang: 'ar-SA', ...opts })
 }
 
 // ------------------------- الجدولة التلقائية (كل ساعة وكل نصف ساعة) -------------------------
@@ -384,7 +673,19 @@ export default {
   dmsToArabicWords,
   hmsAngleToArabicWords,
   hmsClockToArabicWords,
+  hoursDecimalToArabicDuration,
+  frenchNumberToWords,
+  joinFrenchList,
+  frenchCountedNoun,
+  FRENCH_NOUN_FORMS,
+  dmsToFrenchWords,
+  hmsAngleToFrenchWords,
+  hmsClockToFrenchWords,
+  hoursDecimalToFrenchDuration,
+  buildNarrationScriptArabic,
+  buildNarrationScriptFrench,
   buildNarrationScript,
+  speak,
   speakArabic,
   scheduleHourlyReadings
 }

@@ -128,18 +128,42 @@ const PHASE_NAMES_AR = {
   waningCrescent: 'هلال متناقص'
 }
 
+const PHASE_NAMES_FR = {
+  new: 'nouvelle lune',
+  waxingCrescent: 'premier croissant',
+  firstQuarter: 'premier quartier',
+  waxingGibbous: 'lune gibbeuse croissante',
+  full: 'pleine lune',
+  waningGibbous: 'lune gibbeuse décroissante',
+  lastQuarter: 'dernier quartier',
+  waningCrescent: 'dernier croissant'
+}
+
+/** يصنّف طور القمر إلى مفتاح موحَّد (مستقل عن اللغة) من نسبة الإضاءة k (0..1) وحالة التزايد (waxing) */
+function moonPhaseKey (illuminatedFraction, isWaxing) {
+  const k = illuminatedFraction
+  if (k < 0.02) return 'new'
+  if (k > 0.98) return 'full'
+  if (k < 0.48) return isWaxing ? 'waxingCrescent' : 'waningCrescent'
+  if (k <= 0.52) return isWaxing ? 'firstQuarter' : 'lastQuarter'
+  return isWaxing ? 'waxingGibbous' : 'waningGibbous'
+}
+
 /**
  * يصنّف طور القمر من نسبة الإضاءة k (0..1) وحالة التزايد (waxing)
  */
 export function moonPhaseNameArabic (illuminatedFraction, isWaxing) {
-  const k = illuminatedFraction
-  let key
-  if (k < 0.02) key = 'new'
-  else if (k > 0.98) key = 'full'
-  else if (k < 0.48) key = isWaxing ? 'waxingCrescent' : 'waningCrescent'
-  else if (k <= 0.52) key = isWaxing ? 'firstQuarter' : 'lastQuarter'
-  else key = isWaxing ? 'waxingGibbous' : 'waningGibbous'
-  return PHASE_NAMES_AR[key]
+  return PHASE_NAMES_AR[moonPhaseKey(illuminatedFraction, isWaxing)]
+}
+
+/** نظير moonPhaseNameArabic بالفرنسية */
+export function moonPhaseNameFrench (illuminatedFraction, isWaxing) {
+  return PHASE_NAMES_FR[moonPhaseKey(illuminatedFraction, isWaxing)]
+}
+
+/** يختار الاسم بحسب اللغة (افتراضيا عربي) */
+export function moonPhaseName (illuminatedFraction, isWaxing, lang = 'ar') {
+  return lang === 'fr' ? moonPhaseNameFrench(illuminatedFraction, isWaxing) : moonPhaseNameArabic(illuminatedFraction, isWaxing)
 }
 
 /**
@@ -169,6 +193,7 @@ export function moonPhaseInfo (jde, sunEq, moonEq, moonRangeKm) {
     illuminatedFraction: k,
     ageDays,
     phaseNameArabic: moonPhaseNameArabic(k, isWaxing),
+    phaseNameFrench: moonPhaseNameFrench(k, isWaxing),
     nextNewMoonJDE: nextNM,
     nextNewMoonUTCDate: julian.JDEToDate(nextNM)
   }
@@ -182,6 +207,8 @@ export default {
   nextNewMoonAfter,
   previousNewMoonBeforeOrAt,
   moonPhaseNameArabic,
+  moonPhaseNameFrench,
+  moonPhaseName,
   moonPhaseInfo,
   earth,
   solarModule: solar

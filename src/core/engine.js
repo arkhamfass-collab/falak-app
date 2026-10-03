@@ -48,14 +48,24 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const time = {
     utcDate: nowUtc,
     utcOffsetHours,
-    local: { ...localParts, weekdayNameArabic: formatModule.weekdayNameArabic(weekdayIndex) },
+    local: {
+      ...localParts,
+      weekdayIndex,
+      weekdayNameArabic: formatModule.weekdayNameArabic(weekdayIndex),
+      weekdayNameFrench: formatModule.weekdayNameFrench(weekdayIndex)
+    },
     gregorian: {
       year: localParts.year,
       month: localParts.month,
       day: localParts.day,
-      monthNameArabic: formatModule.gregorianMonthNameArabic(localParts.month)
+      monthNameArabic: formatModule.gregorianMonthNameArabic(localParts.month),
+      monthNameFrench: formatModule.gregorianMonthNameFrench(localParts.month)
     },
-    hijri: { ...hijri, monthNameArabic: formatModule.hijriMonthNameArabic(hijri.month) }
+    hijri: {
+      ...hijri,
+      monthNameArabic: formatModule.hijriMonthNameArabic(hijri.month),
+      monthNameFrench: formatModule.hijriMonthNameFrench(hijri.month)
+    }
   }
 
   // ---------------- الشمس ----------------
@@ -93,6 +103,7 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     ageDays: moonPhase.ageDays,
     illuminatedFraction: moonPhase.illuminatedFraction,
     phaseNameArabic: moonPhase.phaseNameArabic,
+    phaseNameFrench: moonPhase.phaseNameFrench,
     distanceKm: moonData.range,
     nextNewMoon: { utcDate: moonPhase.nextNewMoonUTCDate, local: nextNewMoonLocal }
   }

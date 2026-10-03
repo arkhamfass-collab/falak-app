@@ -259,14 +259,20 @@ main { padding: 14px 16px 24px; max-width: 760px; margin: 0 auto; }
   background: var(--bg);
   color: var(--text);
 }
-/* حقول الأرقام ترث dir="rtl" من الصفحة فيظهر علامة السالب بعد الرقم ("18-" بدل "-18") -
-   نفرض LTR داخل الحقل نفسه (مع إبقاء محاذاته يمينا ليتماشى بصريا مع تدفق النموذج العربي).
-   .signed-decimal حقول نصية (لا type="number") لحقول قد تحتاج قيمة سالبة - انظر التعليق
-   في app.js (wireSignedDecimalInput) لسبب تفادي type="number" لها تحديدا. */
-.field-row input[type="number"],
-.field-row input.signed-decimal {
+/* حقول الأرقام قد ترث dir="rtl" من الصفحة (في وضع العربية) فيظهر علامة السالب بعد الرقم
+   ("18-" بدل "-18") - نفرض LTR داخل الحقل نفسه دائما (القيمة رقمية بحتة بغض النظر عن لغة
+   الواجهة)، مع محاذاة يمينية في العربية (لتماشي بصري مع تدفق النموذج RTL) ويسارية في الفرنسية
+   (التدفق الطبيعي لنموذج LTR). .signed-decimal حقول نصية (لا type="number") لحقول قد تحتاج
+   قيمة سالبة - انظر التعليق في app.js (wireSignedDecimalInput) لسبب تفادي type="number" لها تحديدا. */
+html[dir="rtl"] .field-row input[type="number"],
+html[dir="rtl"] .field-row input.signed-decimal {
   direction: ltr;
   text-align: right;
+}
+html[dir="ltr"] .field-row input[type="number"],
+html[dir="ltr"] .field-row input.signed-decimal {
+  direction: ltr;
+  text-align: left;
 }
 
 /* صفّ الحقل الذي يرافقه زر "±" (انظر التعليق في app.js لماذا هذا الزر ضروري وليس تزيينا) */

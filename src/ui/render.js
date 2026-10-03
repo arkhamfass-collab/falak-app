@@ -1,9 +1,11 @@
 /**
  * src/ui/render.js
  * دوال عرض خالصة: تملأ عناصر DOM من نتيجة engine.computeAll()، بلا أي حالة أو منطق تطبيق
- * خاص بها (الحالة والأحداث في app.js).
+ * خاص بها (الحالة والأحداث في app.js). تأخذ كل دوال العرض لغة العرض lang ('ar'|'fr') لاختيار
+ * النصوص والأسماء المناسبة من i18n.js ومن حقول *Arabic/*French التي يُرجعها المحرك.
  */
 import format from '../core/format.js'
+import i18n from '../core/i18n.js'
 
 function setText (root, selector, text) {
   const el = root.querySelector(selector)
@@ -36,11 +38,18 @@ const UTC_PARTS_FN = (d) => ({
   hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds()
 })
 
-export function renderHeader (root, r) {
+export function renderHeader (root, r, lang = 'ar') {
   setText(root, '#clockNow', `${pad2(r.time.local.hour)}:${pad2(r.time.local.minute)}:${pad2(r.time.local.second)}`)
-  setText(root, '#weekdayNow', r.time.local.weekdayNameArabic)
-  setText(root, '#hijriNow', `هجري: ${r.time.hijri.day} ${r.time.hijri.monthNameArabic} ${r.time.hijri.year} هـ`)
-  setText(root, '#gregorianNow', `ميلادي: ${r.time.gregorian.day} ${r.time.gregorian.monthNameArabic} ${r.time.gregorian.year} م`)
+  setText(root, '#weekdayNow', lang === 'fr' ? r.time.local.weekdayNameFrench : r.time.local.weekdayNameArabic)
+  const hijriMonth = lang === 'fr' ? r.time.hijri.monthNameFrench : r.time.hijri.monthNameArabic
+  const gregMonth = lang === 'fr' ? r.time.gregorian.monthNameFrench : r.time.gregorian.monthNameArabic
+  if (lang === 'fr') {
+    setText(root, '#hijriNow', `Hégire : ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year}`)
+    setText(root, '#gregorianNow', `Grégorien : ${r.time.gregorian.day} ${gregMonth} ${r.time.gregorian.year}`)
+  } else {
+    setText(root, '#hijriNow', `هجري: ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year} هـ`)
+    setText(root, '#gregorianNow', `ميلادي: ${r.time.gregorian.day} ${gregMonth} ${r.time.gregorian.year} م`)
+  }
 }
 
 export function renderPrayerTimes (root, r, localPartsFn) {
@@ -63,10 +72,12 @@ export function renderPrayerTimes (root, r, localPartsFn) {
   }
 }
 
-export function renderSun (root, r, localPartsFn) {
+export function renderSun (root, r, localPartsFn, lang = 'ar') {
   const s = r.sun
+  const auSuffix = i18n.t('sun.auSuffix', lang)
+  const cmSuffix = i18n.t('sun.cmSuffix', lang)
   setByDataF(root, 'sun.ecl.lon', format.formatDMS(s.ecliptic.longitudeDeg))
-  setByDataF(root, 'sun.ecl.dist', s.ecliptic.distanceAU.toFixed(6) + ' و.ف')
+  setByDataF(root, 'sun.ecl.dist', s.ecliptic.distanceAU.toFixed(6) + auSuffix)
   // المطلع المستقيم والزاوية الساعية يُعبَّر عنهما فلكيا بالساعات-دقائق-ثواني (0-24سا) لا
   // بالدرجات، لأنهما أصلا قياس زمني (مطابقة توقيت عبور خط الزوال) - بخلاف الميل والارتفاع
   // والسمت فهي زوايا حقيقية تبقى بالدرجات. انظر أيضا moon.eq.ra/moon.hz.ha بالأسفل لنفس السبب.
@@ -78,15 +89,19 @@ export function renderSun (root, r, localPartsFn) {
   setByDataF(root, 'sun.rts.rise', fmtClockOrDash(s.riseTransitSet.riseDate, localPartsFn))
   setByDataF(root, 'sun.rts.transit', fmtClockOrDash(s.riseTransitSet.transitDate, localPartsFn))
   setByDataF(root, 'sun.rts.set', fmtClockOrDash(s.riseTransitSet.setDate, localPartsFn))
-  setByDataF(root, 'sun.gnomon', String(s.gnomonCm))
-  setByDataF(root, 'sun.shadowZawal', s.shadowAtZawalCm != null ? s.shadowAtZawalCm.toFixed(1) + ' سم' : '—', { rtl: true })
-  setByDataF(root, 'sun.shadowNow', s.shadowNowCm != null ? s.shadowNowCm.toFixed(1) + ' سم' : 'الشمس تحت الأفق', { rtl: true })
+  setText(root, '#sunShadowGroupTitle', i18n.t('sun.shadowGroupTitle', lang, { gnomon: s.gnomonCm }))
+  const isAr = lang !== 'fr'
+  setByDataF(root, 'sun.shadowZawal', s.shadowAtZawalCm != null ? s.shadowAtZawalCm.toFixed(1) + cmSuffix : '—', { rtl: isAr })
+  setByDataF(root, 'sun.shadowNow', s.shadowNowCm != null ? s.shadowNowCm.toFixed(1) + cmSuffix : i18n.t('sun.shadowNowFallback', lang), { rtl: isAr })
   setByDataF(root, 'sun.dayLen', format.formatHMS(s.dayLengthHours, { showSeconds: false }))
   setByDataF(root, 'sun.nightLen', format.formatHMS(s.nightLengthHours, { showSeconds: false }))
 }
 
-export function renderMoon (root, r, localPartsFn) {
+export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   const m = r.moon
+  const isAr = lang !== 'fr'
+  const daySuffix = i18n.t('moon.daySuffix', lang)
+  const kmSuffix = i18n.t('moon.kmSuffix', lang)
   setByDataF(root, 'moon.ecl.lon', format.formatDMS(m.ecliptic.longitudeDeg))
   setByDataF(root, 'moon.ecl.lat', format.formatDMS(m.ecliptic.latitudeDeg, { showPlus: true }))
   setByDataF(root, 'moon.eq.ra', format.formatHMS(format.normalizeDeg360(m.equatorial.rightAscensionDeg) / 15))
@@ -98,12 +113,12 @@ export function renderMoon (root, r, localPartsFn) {
   setByDataF(root, 'moon.rts.transit', fmtClockOrDash(m.riseTransitSet.transitDate, localPartsFn))
   setByDataF(root, 'moon.rts.set', fmtClockOrDash(m.riseTransitSet.setDate, localPartsFn))
   setByDataF(root, 'moon.elong', format.formatDMS(m.elongationDeg))
-  setByDataF(root, 'moon.age', m.ageDays.toFixed(2) + ' يوما', { rtl: true })
-  setByDataF(root, 'moon.dist', Math.round(m.distanceKm).toLocaleString('en-US') + ' كم', { rtl: true })
-  setByDataF(root, 'moon.phase', m.phaseNameArabic, { rtl: true })
+  setByDataF(root, 'moon.age', m.ageDays.toFixed(2) + daySuffix, { rtl: isAr })
+  setByDataF(root, 'moon.dist', Math.round(m.distanceKm).toLocaleString('en-US') + kmSuffix, { rtl: isAr })
+  setByDataF(root, 'moon.phase', isAr ? m.phaseNameArabic : m.phaseNameFrench, { rtl: isAr })
   setByDataF(root, 'moon.illum', (m.illuminatedFraction * 100).toFixed(1) + '%')
-  setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: true })
-  setByDataF(root, 'moon.nextNewLocal', fmtDateAndClock(m.nextNewMoon.utcDate, localPartsFn), { rtl: true })
+  setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: isAr })
+  setByDataF(root, 'moon.nextNewLocal', fmtDateAndClock(m.nextNewMoon.utcDate, localPartsFn), { rtl: isAr })
 }
 
 export function renderSidereal (root, r) {
@@ -112,18 +127,29 @@ export function renderSidereal (root, r) {
   setByDataF(root, 'sid.lst', format.formatHMS(r.sidereal.lstHours))
 }
 
-export function renderPrayerHints (root, settings) {
-  setText(root, '#hintFajrAngle', settings.fajrAngleDeg + '°')
-  setText(root, '#hintAsrMethod', settings.asrFactor === 2 ? 'الحنفية' : 'الجمهور')
-  setText(root, '#hintIshaOffset', settings.ishaMode === 'angle' ? (settings.ishaAngleDeg + '° (بزاوية)') : settings.ishaOffsetMinutes)
+export function renderPrayerHints (root, settings, lang = 'ar') {
+  const asrMethodLabel = settings.asrFactor === 2 ? i18n.t('prayer.asrHanafiShort', lang) : i18n.t('prayer.asrJumhurShort', lang)
+  const ishaInfo = settings.ishaMode === 'angle'
+    ? `${settings.ishaAngleDeg}${i18n.t('prayer.hintIshaAngleSuffix', lang)}`
+    : settings.ishaOffsetMinutes
+  setText(root, '#prayerHintText', i18n.t('prayer.hint', lang, {
+    fajrAngle: settings.fajrAngleDeg + '°',
+    asrMethod: asrMethodLabel,
+    ishaInfo
+  }))
 }
 
-export function renderAll (root, r, localPartsFn) {
-  renderHeader(root, r)
+/** يطبّق كل النصوص الثابتة (data-i18n) والمتغيّرة مع اللغة الحالية - يُستدعى عند الإقلاع وعند تبديل اللغة */
+export function applyStaticLanguage (root, lang) {
+  i18n.applyTranslations(root, lang)
+}
+
+export function renderAll (root, r, localPartsFn, lang = 'ar') {
+  renderHeader(root, r, lang)
   renderPrayerTimes(root, r, localPartsFn)
-  renderSun(root, r, localPartsFn)
-  renderMoon(root, r, localPartsFn)
+  renderSun(root, r, localPartsFn, lang)
+  renderMoon(root, r, localPartsFn, lang)
   renderSidereal(root, r)
 }
 
-export default { renderHeader, renderPrayerTimes, renderSun, renderMoon, renderSidereal, renderPrayerHints, renderAll }
+export default { renderHeader, renderPrayerTimes, renderSun, renderMoon, renderSidereal, renderPrayerHints, applyStaticLanguage, renderAll }

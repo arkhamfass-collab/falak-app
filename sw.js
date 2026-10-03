@@ -7,7 +7,10 @@
  * لا يتدخل في أي طلب لمصدر خارجي (خطوط جوجل مثلا) - تلك الطلبات تذهب للشبكة مباشرة كالعادة.
  * وإن تعذّر أي شيء هنا (حتى التسجيل نفسه) يستمر التطبيق في العمل بشكل طبيعي تماما بلا كاش.
  */
-const CACHE_NAME = 'falak-app-shell-v1'
+// رُفع رقم الإصدار (v1→v2) مع إضافة دعم الفرنسية وفصل المنطقة الزمنية عن الموقع: هذا يضمن أن
+// من ثبّت النسخة السابقة فعلا يحصل على غلاف مُحدَّث نظيف (تُحذف كل مداخل v1 القديمة في
+// activate أدناه) بدل الاستمرار في تصفّح نسخة مخبّأة قديمة إلى ما لا نهاية.
+const CACHE_NAME = 'falak-app-shell-v2'
 
 const CORE_ASSETS = [
   './',
@@ -18,6 +21,7 @@ const CORE_ASSETS = [
   'src/ui/render.js',
   'src/core/engine.js',
   'src/core/format.js',
+  'src/core/i18n.js',
   'src/core/hijri.js',
   'src/core/moon.js',
   'src/core/prayerTimes.js',

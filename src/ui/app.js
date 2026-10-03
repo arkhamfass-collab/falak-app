@@ -1,22 +1,24 @@
 /**
  * src/ui/app.js
- * نقطة انطلاق الواجهة: الحالة (الموقع، إعدادات الصلاة، القراءة الآلية)، حفظها محليا،
+ * نقطة انطلاق الواجهة: الحالة (اللغة، الموقع، إعدادات الصلاة، القراءة الآلية)، حفظها محليا،
  * حلقة التحديث الثانية، تبديل التبويبات، نافذة الإعدادات، وربط القارئ الصوتي.
  */
 import engine from '../core/engine.js'
 import timeutil from '../core/timeutil.js'
 import reader from '../core/reader.js'
+import i18n from '../core/i18n.js'
 import render from './render.js'
 
 const STORAGE_KEY = 'falakAppSettings_v1'
 
 const DEFAULT_STATE = {
+  language: 'ar', // 'ar' | 'fr' - لغة الواجهة والقراءة الصوتية (العربية افتراضيا، راجع i18n.js)
   locMode: 'manual', // 'auto' | 'manual' - نبدأ يدويا بموقع افتراضي حتى يختار المستخدم تلقائيا
-  autoCoords: null, // {lat, lon} من آخر تحديد تلقائي ناجح
-  autoTimeZone: null,
+  autoCoords: null, // {lat, lon} من آخر تحديد تلقائي ناجح للموقع الجغرافي فقط (لا علاقة له بالمنطقة الزمنية - انظر detectLocation أدناه)
+  autoTimeZone: null, // آخر منطقة زمنية اكتشفها الجهاز (لعرضها كمعلومة فقط - لا تُطبَّق تلقائيا أبدا، راجع applyDetectedPosition)
   manualLat: 21.3891,
   manualLon: 39.8579,
-  tzMode: 'offset', // 'tz' | 'offset'
+  tzMode: 'offset', // 'tz' | 'offset' - مستقل كليا عن locMode (يُضبط يدويا دائما، تلبية لطلب فصل الاثنين)
   timeZone: 'Asia/Riyadh',
   utcOffsetHours: 3,
   gnomonCm: 60,
@@ -26,7 +28,7 @@ const DEFAULT_STATE = {
   ishaOffsetMinutes: 90,
   ishaAngleDeg: -18,
   autoReadEnabled: true,
-  voiceName: null, // null = تلقائي (أول صوت عربي يجده المتصفح) - أو اسم صوت محدد اختاره المستخدم
+  voiceName: null, // null = تلقائي (أول صوت بلغة الواجهة الحالية يجده المتصفح) - أو اسم صوت محدد اختاره المستخدم
   speechRate: 0.95
 }
 
@@ -93,8 +95,8 @@ function tick () {
   const location = currentLocation()
   const r = engine.computeAll(location, new Date(), currentPrayerSettings())
   lastResult = r
-  render.renderAll(document, r, localPartsFn)
-  render.renderPrayerHints(document, currentPrayerSettings())
+  render.renderAll(document, r, localPartsFn, state.language)
+  render.renderPrayerHints(document, currentPrayerSettings(), state.language)
   updateLocationSummary()
 }
 
@@ -102,10 +104,33 @@ function updateLocationSummary () {
   const loc = currentLocation()
   const el = document.getElementById('locationSummary')
   if (!el) return
-  const latTxt = Math.abs(loc.latDeg).toFixed(2) + (loc.latDeg >= 0 ? '°ش' : '°ج')
-  const lonTxt = Math.abs(loc.lonEastDeg).toFixed(2) + (loc.lonEastDeg >= 0 ? '°شرق' : '°غرب')
+  const lang = state.language
+  const northLetter = i18n.t('compass.north', lang)
+  const southLetter = i18n.t('compass.south', lang)
+  const eastLetter = i18n.t('compass.east', lang)
+  const westLetter = i18n.t('compass.west', lang)
+  const latTxt = Math.abs(loc.latDeg).toFixed(2) + '°' + (loc.latDeg >= 0 ? northLetter : southLetter)
+  const lonTxt = Math.abs(loc.lonEastDeg).toFixed(2) + '°' + (loc.lonEastDeg >= 0 ? eastLetter : westLetter)
   const tzTxt = state.tzMode === 'tz' ? state.timeZone : `UTC${loc.observerTime.utcOffsetHours >= 0 ? '+' : ''}${loc.observerTime.utcOffsetHours}`
   el.textContent = `${latTxt} ${lonTxt} — ${tzTxt}`
+}
+
+// ------------------------- اللغة -------------------------
+
+function applyLanguage (lang) {
+  document.documentElement.lang = lang
+  document.documentElement.dir = i18n.dirForLang(lang)
+  document.title = i18n.t('app.title', lang)
+  render.applyStaticLanguage(document, lang)
+  populateVoiceSelect()
+}
+
+function setLanguage (lang) {
+  if (lang !== 'ar' && lang !== 'fr') return
+  state.language = lang
+  saveState()
+  applyLanguage(lang)
+  tick()
 }
 
 // ------------------------- التبويبات -------------------------
@@ -155,28 +180,31 @@ function populateTimezoneSelect () {
 
 // ------------------------- اختيار صوت القارئ -------------------------
 
-// بعض الأجهزة تضيف أصواتا عربية لاحقا (الحدث غير متزامن) - نعيد ملء القائمة كلما تغيّرت
+// بعض الأجهزة تضيف أصواتا لاحقا (الحدث غير متزامن) - نعيد ملء القائمة كلما تغيّرت، ونرشّح
+// بحسب لغة الواجهة الحالية (عربي أو فرنسي) لا بحسب افتراض ثابت - وإلا ظل صوت عربي يُقترح أثناء
+// تصفّح الفرنسية (أو العكس) رغم أنه لا يمكنه نطقها بشكل صحيح.
 function populateVoiceSelect () {
   const sel = document.getElementById('inVoice')
   if (!sel || typeof window === 'undefined' || !window.speechSynthesis) return
+  const langPrefix = state.language === 'fr' ? 'fr' : 'ar'
   const allVoices = window.speechSynthesis.getVoices()
-  const arabicVoices = allVoices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('ar'))
+  const matchingVoices = allVoices.filter((v) => v.lang && v.lang.toLowerCase().startsWith(langPrefix))
   const prevValue = sel.value || state.voiceName || ''
   sel.innerHTML = ''
   const autoOpt = document.createElement('option')
   autoOpt.value = ''
-  autoOpt.textContent = 'تلقائي (أول صوت عربي يوفّره الجهاز)'
+  autoOpt.textContent = i18n.t('settings.voiceAutoOption', state.language)
   sel.appendChild(autoOpt)
-  for (const v of arabicVoices) {
+  for (const v of matchingVoices) {
     const opt = document.createElement('option')
     opt.value = v.name
     opt.textContent = `${v.name} (${v.lang})`
     sel.appendChild(opt)
   }
-  if (arabicVoices.length === 0) {
+  if (matchingVoices.length === 0) {
     const noneOpt = document.createElement('option')
     noneOpt.value = ''
-    noneOpt.textContent = 'لم يُعثر على صوت عربي مثبَّت على هذا الجهاز'
+    noneOpt.textContent = i18n.t('settings.voiceNoneFound', state.language)
     noneOpt.disabled = true
     sel.appendChild(noneOpt)
   }
@@ -191,10 +219,14 @@ function testVoiceNow () {
   const statusEl = document.getElementById('readerStatus')
   const voiceName = document.getElementById('inVoice').value || null
   const rate = numOr(document.getElementById('inRate').value, 0.95)
-  statusEl.textContent = 'جارٍ تجربة الصوت...'
-  reader.speakArabic('هذا اختبار لجودة النطق: الساعة الآن الثالثة والنصف مساء.', { voiceNameHint: voiceName, rate })
-    .then(() => { statusEl.textContent = 'تمت التجربة.' })
-    .catch(() => { statusEl.textContent = 'تعذّر النطق الصوتي في هذا المتصفح.' })
+  statusEl.textContent = i18n.t('status.testingVoice', state.language)
+  reader.speak(i18n.t('settings.voiceTestSentence', state.language), {
+    lang: state.language === 'fr' ? 'fr-FR' : 'ar-SA',
+    voiceNameHint: voiceName,
+    rate
+  })
+    .then(() => { statusEl.textContent = i18n.t('status.testDone', state.language) })
+    .catch(() => { statusEl.textContent = i18n.t('status.speechFailed', state.language) })
 }
 
 // ------------------------- نافذة الإعدادات -------------------------
@@ -209,6 +241,7 @@ function closeSettingsModal () {
 }
 
 function fillSettingsFormFromState () {
+  document.querySelector(`input[name="uiLang"][value="${state.language}"]`).checked = true
   document.querySelector(`input[name="locMode"][value="${state.locMode}"]`).checked = true
   document.getElementById('inLat').value = state.manualLat
   document.getElementById('inLon').value = state.manualLon
@@ -235,6 +268,8 @@ function updateSettingsVisibility () {
   document.getElementById('locAutoBlock').classList.toggle('hidden', locMode !== 'auto')
   document.getElementById('locManualBlock').classList.toggle('hidden', locMode !== 'manual')
 
+  // قسم المنطقة الزمنية مستقل كليا عن locMode أعلاه (لا يُخفى أبدا بسببه) - يظهر فقط حقل
+  // الاسم أو حقل الإزاحة بحسب tzMode، تماما كما كان الحال سابقا، لكن القسم نفسه الآن ثابت الظهور.
   const tzMode = document.querySelector('input[name="tzMode"]:checked').value
   document.getElementById('tzSelectRow').classList.toggle('hidden', tzMode !== 'tz')
   document.getElementById('tzOffsetRow').classList.toggle('hidden', tzMode !== 'offset')
@@ -254,6 +289,7 @@ function numOr (value, fallback = 0) {
 }
 
 function saveSettingsFromForm () {
+  const newLang = document.querySelector('input[name="uiLang"]:checked').value
   state.locMode = document.querySelector('input[name="locMode"]:checked').value
   state.manualLat = numOr(document.getElementById('inLat').value, state.manualLat)
   state.manualLon = numOr(document.getElementById('inLon').value, state.manualLon)
@@ -270,7 +306,8 @@ function saveSettingsFromForm () {
   state.speechRate = numOr(document.getElementById('inRate').value, state.speechRate)
   saveState()
   closeSettingsModal()
-  tick()
+  if (newLang !== state.language) setLanguage(newLang) // يطبّق الترجمة ويُعيد العرض بنفسه
+  else tick()
 }
 
 // حقل نصي لعدد عشري قد يكون سالبا (خطوط الطول/العرض، الإزاحة الزمنية، زوايا الفجر/العشاء):
@@ -332,15 +369,24 @@ function wireSignToggle (id) {
   syncSignButton(id)
 }
 
+// نجاح تحديد الموقع الجغرافي يحدّث الإحداثيات (ويُفعّل الوضع التلقائي للموقع) فقط - ولا يمسّ
+// المنطقة الزمنية مطلقا (لا state.tzMode ولا state.timeZone ولا state.utcOffsetHours) بناء على
+// طلب صريح لفصل الاثنين: "تحديد منطقة الزمنية يدويا بينما يمكن تحديد منطقة الجغرافية تلقائيا".
+// نكتشف منطقة الجهاز الزمنية المحتملة لعرضها كمعلومة مفيدة فقط (قد تساعد المستخدم على ضبطها
+// يدويا بنفسه في قسم "المنطقة الزمنية" المستقل) لكن لا نطبّقها أبدا من تلقاء أنفسنا.
 function applyDetectedPosition (pos, resultEl) {
-  state.locMode = 'auto' // نجاح التحديد يعني الالتزام بالوضع التلقائي فعليا
+  const lang = state.language
+  state.locMode = 'auto' // نجاح التحديد يعني الالتزام بالوضع التلقائي للموقع الجغرافي فقط
   state.autoCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude }
-  try { state.autoTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone } catch (e) { state.autoTimeZone = null }
-  if (state.autoTimeZone) { state.tzMode = 'tz'; state.timeZone = state.autoTimeZone }
-  resultEl.textContent = `تم التحديد: ${state.autoCoords.lat.toFixed(4)}°, ${state.autoCoords.lon.toFixed(4)}°` +
-    (state.autoTimeZone ? ` — المنطقة الزمنية: ${state.autoTimeZone}` : '')
+  let detectedTz = null
+  try { detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone } catch (e) { detectedTz = null }
+  state.autoTimeZone = detectedTz // معلومة محفوظة للعرض فقط - راجع التعليق أعلاه
+  let msg = i18n.t('geo.successTemplate', lang, { lat: state.autoCoords.lat.toFixed(4), lon: state.autoCoords.lon.toFixed(4) })
+  if (detectedTz) msg += i18n.t('geo.detectedTzNote', lang, { tz: detectedTz })
+  resultEl.textContent = msg
   // لازم نُعيد مزامنة كل حقول النموذج مع الحالة الآن (بعد تحديث locMode أعلاه) - وإلا فسيقرأ
-  // زر "حفظ" قيما قديمة من النموذج (وضعا يدويا سابقا مثلا) ويطمس التحديد التلقائي الذي تم للتو
+  // زر "حفظ" قيما قديمة من النموذج (وضعا يدويا سابقا مثلا) ويطمس التحديد التلقائي الذي تم للتو.
+  // ملاحظة: هذا لا يمسّ حقول المنطقة الزمنية في النموذج أصلا - فهي لم تتغيّر في state لتبدأ.
   fillSettingsFormFromState()
   saveState()
   tick()
@@ -350,24 +396,22 @@ function applyDetectedPosition (pos, resultEl) {
 // انظر: GeolocationPositionError. هذا يفرّق بين سبب "رفض صريح" (يحتاج تدخلا من المستخدم في إعدادات
 // النظام/المتصفح) وسبب "تقني مؤقت" (قد تنجح معه محاولة ثانية بدقة أقل، فتُعرض فقط بانتظار تلك المحاولة).
 function geolocationErrorMessage (err) {
+  const lang = state.language
   const code = err && err.code
-  if (code === 1) {
-    return 'تم رفض إذن الموقع. تحقّقوا من: أيقونة القفل/الموقع 🔒 بجانب شريط العنوان، ثم من صلاحية ' +
-      '"الموقع" الممنوحة للمتصفح نفسه من إعدادات نظام الجهاز (أندرويد: الإعدادات ← التطبيقات ← المتصفح ← ' +
-      'الأذونات ← الموقع)، وأن خدمة الموقع في النظام مفعّلة عموما. ثم أعيدوا المحاولة، أو استعملوا الإدخال اليدوي.'
-  }
-  if (code === 3) return 'انتهى الوقت المسموح دون نتيجة (يحدث غالبا في الأماكن المغلقة). نعاود المحاولة بدقة أقل...'
-  if (code === 2) return 'تعذّر تحديد الموقع حاليا (الموضع غير متوفر). نعاود المحاولة...'
-  return 'تعذّر تحديد الموقع (' + (err && err.message ? err.message : 'خطأ غير معروف') + '). يمكنكم استعمال الإدخال اليدوي.'
+  if (code === 1) return i18n.t('geo.errorDenied', lang)
+  if (code === 3) return i18n.t('geo.errorTimeout', lang)
+  if (code === 2) return i18n.t('geo.errorUnavailable', lang)
+  return i18n.t('geo.errorGeneric', lang, { message: (err && err.message) ? err.message : i18n.t('geo.errorUnknown', lang) })
 }
 
 function detectLocation () {
   const resultEl = document.getElementById('autoLocResult')
+  const lang = state.language
   if (!('geolocation' in navigator)) {
-    resultEl.textContent = 'خدمة تحديد الموقع غير متوفرة في هذا المتصفح. استعملوا الإدخال اليدوي.'
+    resultEl.textContent = i18n.t('geo.notSupported', lang)
     return
   }
-  resultEl.textContent = 'جارٍ تحديد الموقع...'
+  resultEl.textContent = i18n.t('geo.locating', lang)
 
   let settled = false // لحماية من استدعاء مزدوج (نتيجة حقيقية متأخرة + الحارس الزمني أدناه)
 
@@ -378,9 +422,7 @@ function detectLocation () {
   const watchdog = setTimeout(() => {
     if (settled) return
     settled = true
-    resultEl.textContent = 'لم يستجب المتصفح لطلب الموقع لا بنجاح ولا برفض صريح — يُحتمل أن تحديد الموقع ' +
-      'غير مسموح به في بيئة العرض هذه (مثلا صفحة مفتوحة ضمن معاينة مُضمَّنة). جرّبوا فتح الرابط في نافذة ' +
-      'متصفح مستقلة كاملة، وتأكدوا من تفعيل خدمة الموقع للمتصفح من إعدادات النظام، أو استعملوا الإدخال اليدوي أدناه.'
+    resultEl.textContent = i18n.t('geo.watchdogTimeout', state.language)
   }, 35000)
 
   navigator.geolocation.getCurrentPosition(
@@ -432,24 +474,28 @@ function registerServiceWorker () {
 // ------------------------- القارئ الصوتي -------------------------
 
 function currentSpeechOptions () {
-  return { voiceNameHint: state.voiceName || undefined, rate: Number(state.speechRate) || 0.95 }
+  return {
+    lang: state.language === 'fr' ? 'fr-FR' : 'ar-SA',
+    voiceNameHint: state.voiceName || undefined,
+    rate: Number(state.speechRate) || 0.95
+  }
 }
 
 function speakNow () {
   if (!lastResult) return
   const statusEl = document.getElementById('readerStatus')
-  const text = reader.buildNarrationScript(lastResult, localPartsFn)
-  statusEl.textContent = 'جارٍ القراءة...'
-  reader.speakArabic(text, currentSpeechOptions())
-    .then(() => { statusEl.textContent = 'تمت القراءة.' })
-    .catch((e) => { statusEl.textContent = 'تعذّر النطق الصوتي في هذا المتصفح.' })
+  const text = reader.buildNarrationScript(lastResult, localPartsFn, state.language)
+  statusEl.textContent = i18n.t('status.reading', state.language)
+  reader.speak(text, currentSpeechOptions())
+    .then(() => { statusEl.textContent = i18n.t('status.readDone', state.language) })
+    .catch((e) => { statusEl.textContent = i18n.t('status.speechFailed', state.language) })
 }
 
 function startAutoReading () {
   if (stopHourlyReadings) return
   stopHourlyReadings = reader.scheduleHourlyReadings(
-    () => reader.buildNarrationScript(lastResult, localPartsFn),
-    (text) => reader.speakArabic(text, currentSpeechOptions()).catch(() => {})
+    () => reader.buildNarrationScript(lastResult, localPartsFn, state.language),
+    (text) => reader.speak(text, currentSpeechOptions()).catch(() => {})
   )
 }
 function stopAutoReading () {
@@ -472,6 +518,12 @@ function wireEvents () {
     el.addEventListener('change', updateSettingsVisibility)
   })
 
+  // تبديل اللغة فوري (لا ينتظر زر "حفظ") - فهو تفضيل عرض بحت بلا أي أثر حسابي، ويتوقع المستخدم
+  // رؤية أثره مباشرة كبقية مبدّلات اللغة المعتادة.
+  document.querySelectorAll('input[name="uiLang"]').forEach((el) => {
+    el.addEventListener('change', (e) => setLanguage(e.target.value))
+  })
+
   document.getElementById('btnDetectLocation').addEventListener('click', detectLocation)
   ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle'].forEach((id) => {
     wireSignedDecimalInput(id)
@@ -491,6 +543,7 @@ function wireEvents () {
 function init () {
   registerServiceWorker()
   loadState()
+  applyLanguage(state.language)
   populateTimezoneSelect()
   wireEvents()
   document.getElementById('chkAutoRead').checked = state.autoReadEnabled

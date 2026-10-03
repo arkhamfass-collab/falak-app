@@ -111,6 +111,44 @@ export function hijriMonthNameArabic (month1to12) {
   return HIJRI_MONTHS_AR[month1to12 - 1]
 }
 
+// ------------------------- الأسماء الفرنسية (لدعم اللغة الفرنسية كخيار بديل) -------------------------
+// ملاحظة: أسماء الأيام والأشهر الميلادية تُكتب بحروف صغيرة في الفرنسية (خلافا للإنجليزية) -
+// هذا هو الصواب الإملائي الفرنسي القياسي، وليس سهوا.
+
+const FRENCH_WEEKDAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
+export function weekdayNameFrench (jsDateUTCWeekday0Sunday) {
+  return FRENCH_WEEKDAYS[jsDateUTCWeekday0Sunday]
+}
+
+const GREGORIAN_MONTHS_FR = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+]
+export function gregorianMonthNameFrench (month1to12) {
+  return GREGORIAN_MONTHS_FR[month1to12 - 1]
+}
+
+// تحويل حرفي شائع لأسماء الأشهر الهجرية بالفرنسية (لا يوجد معيار إملائي وحيد متفَق عليه؛
+// هذه الصيغ هي الأكثر شيوعا في المصادر الإسلامية الناطقة بالفرنسية)
+const HIJRI_MONTHS_FR = [
+  'Mouharram', 'Safar', 'Rabia al-Awwal', 'Rabia ath-Thani', 'Joumada al-Oula', 'Joumada al-Akhira',
+  'Rajab', "Cha'bane", 'Ramadan', 'Chawwal', "Dhou al-Qi'da", 'Dhou al-Hijja'
+]
+export function hijriMonthNameFrench (month1to12) {
+  return HIJRI_MONTHS_FR[month1to12 - 1]
+}
+
+/** دوال عامة تختار العربية أو الفرنسية حسب lang (افتراضيا عربي) - مفيدة لمن لا يريد التفرّع يدويا */
+export function weekdayName (jsDateUTCWeekday0Sunday, lang = 'ar') {
+  return lang === 'fr' ? weekdayNameFrench(jsDateUTCWeekday0Sunday) : weekdayNameArabic(jsDateUTCWeekday0Sunday)
+}
+export function gregorianMonthName (month1to12, lang = 'ar') {
+  return lang === 'fr' ? gregorianMonthNameFrench(month1to12) : gregorianMonthNameArabic(month1to12)
+}
+export function hijriMonthName (month1to12, lang = 'ar') {
+  return lang === 'fr' ? hijriMonthNameFrench(month1to12) : hijriMonthNameArabic(month1to12)
+}
+
 export default {
   normalizeDeg360,
   normalizeDegSigned180,
@@ -121,5 +159,11 @@ export default {
   formatSecondsOfDayAsHMS,
   weekdayNameArabic,
   gregorianMonthNameArabic,
-  hijriMonthNameArabic
+  hijriMonthNameArabic,
+  weekdayNameFrench,
+  gregorianMonthNameFrench,
+  hijriMonthNameFrench,
+  weekdayName,
+  gregorianMonthName,
+  hijriMonthName
 }
