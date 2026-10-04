@@ -151,12 +151,23 @@ export function shadowLengthCm (altitudeDeg, gnomonCm = 60) {
   return gnomonCm / Math.tan(altitudeDeg * D2R)
 }
 
+/**
+ * سمت الظل: نظير سمت الشمس تماما (فرق ١٨٠° ثابت دائما، قبل الزوال أو بعده سواء) - فالجمع
+ * أو الطرح لـ١٨٠° يعطيان النتيجة نفسها بعد تضييق المدى لـ٠-٣٦٠°، فلا حاجة للتفريق بين قبل
+ * الزوال وبعده كخطوتين منفصلتين. يُستدعى فقط حين يوجد ظل فعلا (انظر shadowLengthCm أعلاه)؛
+ * القيمة عند الزوال نفسه ثابتة دوما (شمالا أو جنوبا تماما) فلا تُحسب لها هنا (انظر render.js).
+ */
+export function shadowAzimuthDeg (sunAzimuthDeg) {
+  return normalizeDeg360(sunAzimuthDeg + 180)
+}
+
 export default {
   sunEclipticAndEquatorial,
   horizontalFromEquatorial,
   sunRiseTransitSet,
   sunAngleCrossing,
   shadowLengthCm,
+  shadowAzimuthDeg,
   earth,
   nutationModule: nutation,
   baseModule: base

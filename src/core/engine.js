@@ -74,6 +74,8 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const sunRTS = sunModule.sunRiseTransitSet(localParts.year, localParts.month, localParts.day, observerTime, latDeg, lonEastDeg)
   const shadowAtZawalCm = sunRTS.status === 'ok' ? sunModule.shadowLengthCm(sunRTS.transitAltitudeDeg, gnomonCm) : null
   const shadowNowCm = sunModule.shadowLengthCm(sunHz.altitudeDeg, gnomonCm)
+  // سمت الظل الآن (نظير سمت الشمس): معنى فقط حين يوجد ظل فعلا (الشمس فوق الأفق)
+  const shadowAzimuthNowDeg = shadowNowCm != null ? sunModule.shadowAzimuthDeg(sunHz.azimuthDeg) : null
 
   const sun = {
     ecliptic: { longitudeDeg: sunEcl.lon * R2D, distanceAU: sunEcl.range },
@@ -83,13 +85,18 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     gnomonCm,
     shadowAtZawalCm,
     shadowNowCm,
+    shadowAzimuthNowDeg,
     dayLengthHours: sunRTS.dayLengthHours,
     nightLengthHours: sunRTS.nightLengthHours
   }
 
   // ---------------- القمر ----------------
   const moonData = moonModule.moonEclipticAndEquatorial(jde)
-  const moonHz = moonModule.horizontalFromEquatorial(jdUT, moonData.eq, latDeg, lonEastDeg)
+  // تصحيح متوازي السمت الموضعي (parallax، فصل ٤٠ ميوس) خاص بالإحداثيات *الأفقية* فقط - انظر
+  // التعليق المفصّل في moon.js (topocentricEquatorial). الإحداثيات الاستوائية المعروضة أدناه
+  // (moon.equatorial) تبقى جيومركزية كما هي عمدا، وكذلك الشروق/العبور/الغروب (moonRTS) والطور.
+  const moonTopoEq = moonModule.topocentricEquatorial(jdUT, moonData.eq, moonData.parallax, latDeg, lonEastDeg)
+  const moonHz = moonModule.horizontalFromEquatorial(jdUT, moonTopoEq, latDeg, lonEastDeg)
   const moonRTS = moonModule.moonRiseTransitSet(localParts.year, localParts.month, localParts.day, observerTime, latDeg, lonEastDeg)
   const moonPhase = moonModule.moonPhaseInfo(jde, sunEq, moonData.eq, moonData.range)
   const nextNewMoonLocal = timeutilModule.localPartsFromUTC(moonPhase.nextNewMoonUTCDate, observerTime)

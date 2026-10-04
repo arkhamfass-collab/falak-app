@@ -93,6 +93,11 @@ export function renderSun (root, r, localPartsFn, lang = 'ar') {
   const isAr = lang !== 'fr'
   setByDataF(root, 'sun.shadowZawal', s.shadowAtZawalCm != null ? s.shadowAtZawalCm.toFixed(1) + cmSuffix : '—', { rtl: isAr })
   setByDataF(root, 'sun.shadowNow', s.shadowNowCm != null ? s.shadowNowCm.toFixed(1) + cmSuffix : i18n.t('sun.shadowNowFallback', lang), { rtl: isAr })
+  // سمت الظل: قيمة زاوية بصيغة DMS (كسمت الشمس sun.hz.az أعلاه، بلا rtl) حين يوجد ظل، أو نفس
+  // نص "الشمس تحت الأفق" (نص عربي/فرنسي صرف، يحتاج rtl في العربية كـsun.shadowNow) حين لا يوجد.
+  setByDataF(root, 'sun.shadowAzimuthNow',
+    s.shadowAzimuthNowDeg != null ? format.formatDMS(s.shadowAzimuthNowDeg) : i18n.t('sun.shadowNowFallback', lang),
+    { rtl: s.shadowAzimuthNowDeg == null && isAr })
   setByDataF(root, 'sun.dayLen', format.formatHMS(s.dayLengthHours, { showSeconds: false }))
   setByDataF(root, 'sun.nightLen', format.formatHMS(s.nightLengthHours, { showSeconds: false }))
 }

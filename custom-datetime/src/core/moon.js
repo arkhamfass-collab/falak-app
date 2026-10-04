@@ -13,6 +13,7 @@ import moonphase from './astro/src/moonphase.js'
 import nutation from './astro/src/nutation.js'
 import coordLib from './astro/src/coord.js'
 import sidereal from './astro/src/sidereal.js'
+import { Earth76 } from './astro/src/globe.js'
 import riseLib from './astro/src/rise.js'
 import riseSetUtil from './riseSetUtil.js'
 import deltatLib from './astro/src/deltat.js'
@@ -37,6 +38,49 @@ export function moonEclipticAndEquatorial (jde) {
   const eq = new coordLib.Ecliptic(lonApparent, geo.lat).toEquatorial(trueObliquity)
   const parallax = moonposition.parallax(geo.range)
   return { ecl, eq: { ra: eq.ra, dec: eq.dec }, range: geo.range, parallax }
+}
+
+/**
+ * يحوّل الإحداثيات الاستوائية الظاهرية الجيومركزية للقمر (كما تُرى من مركز الأرض، وهي ما تُرجعه
+ * moonEclipticAndEquatorial) إلى إحداثيات طوبوغرافية (كما يراها فعليا مراقب على سطح الأرض عند
+ * latDeg/lonEastDeg) - تصحيح "متوازي السمت الموضعي" (parallax)، الفصل ٤٠ من كتاب ميوس "خوارزميات
+ * فلكية". ضروري للقمر خاصة: قربه النسبي من الأرض (~٣٨٤ ألف كم) يجعل هذا الفرق يصل لنحو درجة
+ * كاملة قرب الأفق، بخلاف الأجرام البعيدة (الشمس، حيث الفرق المقابل لا يتجاوز ثوانٍ قوسية
+ * فيُهمَل تماما - لذلك لا يوجد نظير لهذه الدالة في sun.js أصلا).
+ * هذا التصحيح خاص بحساب الإحداثيات *الأفقية* (الارتفاع/السمت/الساعة الزاوية "الآن") فقط - لا
+ * يُطبَّق على الإحداثيات الاستوائية المعروضة للمستخدم في تبويب القمر (تبقى جيومركزية كما
+ * يتعارف عليه فلكيا في كل التقاويم والمراجع)، ولا على حساب الشروق/العبور/الغروب (الذي يعالج
+ * أثر متوازي السمت بطريقته الخاصة المناسبة له عبر riseLib.stdh0Lunar أدناه - الفصل ١٥).
+ * ارتفاع المراقب عن سطح البحر يُفترض صفرا لعدم وجود حقل له في التطبيق (أثره ثانوي جدا مقارنة
+ * بالتصحيح الأساسي هنا).
+ * @param {number} jdUT - اليوم الجولياني بالتوقيت العالمي
+ * @param {{ra:number, dec:number}} eq - الإحداثيات الاستوائية الظاهرية الجيومركزية (راديان)
+ * @param {number} parallaxRad - متوازي السمت الأفقي المعادل π بالراديان (من moonEclipticAndEquatorial)
+ * @param {number} latDeg - عرض المراقب (شمالا موجب)
+ * @param {number} lonEastDeg - طول المراقب (شرقا موجب)
+ * @returns {{ra:number, dec:number}} الإحداثيات الاستوائية الطوبوغرافية (راديان)
+ */
+export function topocentricEquatorial (jdUT, eq, parallaxRad, latDeg, lonEastDeg) {
+  const gstApparentSec = sidereal.apparent(jdUT)
+  const gstRad = gstApparentSec * Math.PI / (12 * 3600)
+  const lonWestRad = -lonEastDeg * D2R
+  const H = gstRad - lonWestRad - eq.ra // الساعة الزاوية الجيومركزية (راديان؛ لا حاجة لتضييق المدى لأغراض الجيب/الجتا أدناه)
+
+  const [rhoSinPhiPrime, rhoCosPhiPrime] = Earth76.parallaxConstants(latDeg * D2R, 0)
+  const sinPi = Math.sin(parallaxRad)
+  const cosDec = Math.cos(eq.dec)
+  const sinDec = Math.sin(eq.dec)
+
+  // ميوس، المعادلات ٤٠.٢-٤٠.٤
+  const deltaAlpha = Math.atan2(
+    -rhoCosPhiPrime * sinPi * Math.sin(H),
+    cosDec - rhoCosPhiPrime * sinPi * Math.cos(H)
+  )
+  const topoDec = Math.atan2(
+    (sinDec - rhoSinPhiPrime * sinPi) * Math.cos(deltaAlpha),
+    cosDec - rhoCosPhiPrime * sinPi * Math.cos(H)
+  )
+  return { ra: eq.ra + deltaAlpha, dec: topoDec }
 }
 
 export function horizontalFromEquatorial (jdUT, eq, latDeg, lonEastDeg) {
@@ -201,6 +245,7 @@ export function moonPhaseInfo (jde, sunEq, moonEq, moonRangeKm) {
 
 export default {
   moonEclipticAndEquatorial,
+  topocentricEquatorial,
   horizontalFromEquatorial,
   moonRiseTransitSet,
   angularSeparationDeg,

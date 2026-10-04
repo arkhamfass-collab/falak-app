@@ -11,7 +11,9 @@
 // (custom-datetime/) لكن Cache Storage، كـlocalStorage، مرتبط بالأصل (origin) لا بمسار
 // عامل الخدمة - فلو تشارك الاسم مع النسخة الأولى لأصبح الكاش حرفيا كائنا واحدا مشتركا بين
 // النسختين (انظر نفس الملاحظة بخصوص STORAGE_KEY في src/ui/app.js).
-const CACHE_NAME = 'falak-app-custom-datetime-shell-v1'
+// رُفع رقم الإصدار (v1→v2) مع تصحيح متوازي السمت الموضعي لإحداثيات القمر الأفقية وإضافة سمت
+// الظل، لضمان حصول من ثبّت هذه النسخة فعلا على غلاف مُحدَّث نظيف.
+const CACHE_NAME = 'falak-app-custom-datetime-shell-v2'
 
 const CORE_ASSETS = [
   './',
