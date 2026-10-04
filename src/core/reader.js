@@ -447,6 +447,7 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     `Lever à ${dateToClockWordsFrench(s.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(s.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(s.riseTransitSet.setDate, localPartsFn)}. ` +
     (s.shadowAtZawalCm != null ? `La longueur de l'ombre au passage au méridien, pour un gnomon de ${frenchCountedNoun(s.gnomonCm, FRENCH_NOUN_FORMS.cm)}, est de ${s.shadowAtZawalCm.toFixed(1)} centimètres. ` : '') +
     (s.shadowNowCm != null ? `La longueur de l'ombre actuelle est de ${s.shadowNowCm.toFixed(1)} centimètres. ` : "Le Soleil est actuellement sous l'horizon, il n'y a donc pas d'ombre. ") +
+    (s.shadowAzimuthNowDeg != null ? `Et l'azimut de cette ombre est de ${dmsToFrenchWords(s.shadowAzimuthNowDeg)}. ` : '') +
     `Durée du jour ${hoursDecimalToFrenchDuration(s.dayLengthHours)}, durée de la nuit ${hoursDecimalToFrenchDuration(s.nightLengthHours)}.`
   )
 
@@ -524,6 +525,7 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     `شروقها ${dateToClockWords(s.riseTransitSet.riseDate, localPartsFn)}، وزوالها ${dateToClockWords(s.riseTransitSet.transitDate, localPartsFn)}، وغروبها ${dateToClockWords(s.riseTransitSet.setDate, localPartsFn)}. ` +
     (s.shadowAtZawalCm != null ? `طول ظل الزوال لعود ${arabicNumberToWords(s.gnomonCm)} سنتيمترا هو ${s.shadowAtZawalCm.toFixed(1)} سنتيمترا. ` : '') +
     (s.shadowNowCm != null ? `وطول الظل الآن ${s.shadowNowCm.toFixed(1)} سنتيمترا. ` : 'والشمس الآن تحت الأفق فلا ظل لها. ') +
+    (s.shadowAzimuthNowDeg != null ? `وسمت هذا الظل ${dmsToArabicWords(s.shadowAzimuthNowDeg)}. ` : '') +
     `طول النهار ${hoursDecimalToArabicDuration(s.dayLengthHours)}، وطول الليل ${hoursDecimalToArabicDuration(s.nightLengthHours)}.`
   )
 
