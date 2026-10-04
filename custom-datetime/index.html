@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2033">
+<title>الحاسبة الفلكية الشرعية (تاريخ مخصص)</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="public/icon-512.png" sizes="512x512" type="image/png">
+<link rel="icon" href="public/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="public/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="public/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="clock-block">
+    <div id="clockNow" class="clock-now">--:--:--</div>
+    <div id="weekdayNow" class="weekday-now">—</div>
+  </div>
+  <div class="dates-block">
+    <div id="hijriNow" class="date-line hijri">هجري: —</div>
+    <div id="gregorianNow" class="date-line gregorian">ميلادي: —</div>
+  </div>
+  <div class="header-actions">
+    <div id="locationSummary" class="location-summary" data-i18n-attr="title:header.locationTitle" title="الموقع الحالي">—</div>
+    <button id="btnSettings" class="icon-btn" data-i18n-attr="aria-label:header.settingsTitle,title:header.settingsTitle" aria-label="الإعدادات" title="الإعدادات">⚙</button>
+  </div>
+</header>
+
+<!-- شارة "تاريخ ووقت محدد": خاصة بهذه النسخة فقط - تظهر فقط حين يكون dateTimeMode = 'custom'
+     (راجع app.js → updateCustomTimeBadge) لتُنبّه بوضوح أن كل الأرقام المعروضة ثابتة على لحظة
+     اختارها المستخدم ولا تتقدّم مع الساعة الحقيقية - تجنّبا لالتباسها بالوضع المعتاد. -->
+<div id="customTimeBadge" class="custom-time-badge hidden">—</div>
+
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" data-tab="tab-time" role="tab" aria-selected="true" data-i18n="tabs.time">الصلاة والوقت</button>
+  <button class="tab-btn" data-tab="tab-sun" role="tab" aria-selected="false" data-i18n="tabs.sun">الشمس</button>
+  <button class="tab-btn" data-tab="tab-moon" role="tab" aria-selected="false" data-i18n="tabs.moon">القمر</button>
+  <button class="tab-btn" data-tab="tab-sidereal" role="tab" aria-selected="false" data-i18n="tabs.sidereal">الوقت النجمي</button>
+</nav>
+
+<main>
+
+  <section id="tab-time" class="tab-panel active">
+    <h2 class="panel-title" data-i18n="prayer.panelTitle">مواقيت الصلاة</h2>
+    <div id="prayerGrid" class="prayer-grid">
+      <div class="prayer-card" data-k="fajr"><span class="pname" data-i18n="prayer.fajr">الفجر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="sunrise"><span class="pname" data-i18n="prayer.sunrise">الشروق</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="dhuhr"><span class="pname" data-i18n="prayer.dhuhr">الظهر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="asr"><span class="pname" data-i18n="prayer.asr">العصر</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="maghrib"><span class="pname" data-i18n="prayer.maghrib">المغرب</span><span class="ptime">—</span></div>
+      <div class="prayer-card" data-k="isha"><span class="pname" data-i18n="prayer.isha">العشاء</span><span class="ptime">—</span></div>
+    </div>
+    <p class="hint" id="prayerHintText">—</p>
+  </section>
+
+  <section id="tab-sun" class="tab-panel">
+    <h2 class="panel-title" data-i18n="sun.panelTitle">بيانات الشمس</h2>
+
+    <div class="data-group">
+      <h3 data-i18n="sun.eclGroupTitle">الإحداثيات البروجية (السماوية)</h3>
+      <div class="kv"><span data-i18n="common.eclLon">الطول البروجي</span><b data-f="sun.ecl.lon">—</b></div>
+      <div class="kv"><span data-i18n="common.distFromEarth">البعد عن الأرض</span><b data-f="sun.ecl.dist">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="common.eqGroupTitle">الإحداثيات الاستوائية</h3>
+      <div class="kv"><span data-i18n="common.ra">المطلع المستقيم</span><b data-f="sun.eq.ra">—</b></div>
+      <div class="kv"><span data-i18n="common.dec">الميل</span><b data-f="sun.eq.dec">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="common.hzGroupTitle">الإحداثيات الأفقية (الآن)</h3>
+      <div class="kv"><span data-i18n="common.altitude">الارتفاع</span><b data-f="sun.hz.alt">—</b></div>
+      <div class="kv"><span data-i18n="common.azimuth">السمت</span><b data-f="sun.hz.az">—</b></div>
+      <div class="kv"><span data-i18n="common.hourAngle">الزاوية الساعية</span><b data-f="sun.hz.ha">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="sun.rtsGroupTitle">الشروق والزوال والغروب</h3>
+      <div class="kv"><span data-i18n="common.rise">الشروق</span><b data-f="sun.rts.rise">—</b></div>
+      <div class="kv"><span data-i18n="common.transit">الزوال</span><b data-f="sun.rts.transit">—</b></div>
+      <div class="kv"><span data-i18n="common.set">الغروب</span><b data-f="sun.rts.set">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 id="sunShadowGroupTitle">—</h3>
+      <div class="kv"><span data-i18n="sun.shadowZawalLabel">ظل الزوال</span><b data-f="sun.shadowZawal">—</b></div>
+      <div class="kv"><span data-i18n="sun.shadowNowLabel">ظل الوقت الحالي</span><b data-f="sun.shadowNow">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="sun.dayNightGroupTitle">طول النهار والليل</h3>
+      <div class="kv"><span data-i18n="sun.dayLenLabel">طول النهار</span><b data-f="sun.dayLen">—</b></div>
+      <div class="kv"><span data-i18n="sun.nightLenLabel">طول الليل</span><b data-f="sun.nightLen">—</b></div>
+    </div>
+  </section>
+
+  <section id="tab-moon" class="tab-panel">
+    <h2 class="panel-title" data-i18n="moon.panelTitle">بيانات القمر</h2>
+
+    <div class="data-group">
+      <h3 data-i18n="moon.eclGroupTitle">الإحداثيات البروجية</h3>
+      <div class="kv"><span data-i18n="common.eclLon">الطول البروجي</span><b data-f="moon.ecl.lon">—</b></div>
+      <div class="kv"><span data-i18n="moon.eclLatLabel">العرض البروجي</span><b data-f="moon.ecl.lat">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="common.eqGroupTitle">الإحداثيات الاستوائية</h3>
+      <div class="kv"><span data-i18n="common.ra">المطلع المستقيم</span><b data-f="moon.eq.ra">—</b></div>
+      <div class="kv"><span data-i18n="common.dec">الميل</span><b data-f="moon.eq.dec">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="common.hzGroupTitle">الإحداثيات الأفقية (الآن)</h3>
+      <div class="kv"><span data-i18n="common.altitude">الارتفاع</span><b data-f="moon.hz.alt">—</b></div>
+      <div class="kv"><span data-i18n="common.azimuth">السمت</span><b data-f="moon.hz.az">—</b></div>
+      <div class="kv"><span data-i18n="common.hourAngle">الزاوية الساعية</span><b data-f="moon.hz.ha">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="moon.rtsGroupTitle">الشروق والعبور والغروب</h3>
+      <div class="kv"><span data-i18n="common.rise">الشروق</span><b data-f="moon.rts.rise">—</b></div>
+      <div class="kv"><span data-i18n="moon.transit">العبور</span><b data-f="moon.rts.transit">—</b></div>
+      <div class="kv"><span data-i18n="common.set">الغروب</span><b data-f="moon.rts.set">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="moon.miscGroupTitle">المطال والعمر والبعد والطور</h3>
+      <div class="kv"><span data-i18n="moon.elongLabel">المطال (عن الشمس)</span><b data-f="moon.elong">—</b></div>
+      <div class="kv"><span data-i18n="moon.ageLabel">العمر</span><b data-f="moon.age">—</b></div>
+      <div class="kv"><span data-i18n="common.distFromEarth">البعد عن الأرض</span><b data-f="moon.dist">—</b></div>
+      <div class="kv"><span data-i18n="moon.phaseLabel">الطور الحالي</span><b data-f="moon.phase">—</b></div>
+      <div class="kv"><span data-i18n="moon.illumLabel">نسبة الإضاءة</span><b data-f="moon.illum">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="moon.nextNewGroupTitle">الاقتران القادم (المحاق)</h3>
+      <div class="kv"><span data-i18n="moon.nextNewUtcLabel">بالتوقيت العالمي UTC</span><b data-f="moon.nextNewUtc">—</b></div>
+      <div class="kv"><span data-i18n="moon.nextNewLocalLabel">بالتوقيت المحلي</span><b data-f="moon.nextNewLocal">—</b></div>
+    </div>
+  </section>
+
+  <section id="tab-sidereal" class="tab-panel">
+    <h2 class="panel-title" data-i18n="sidereal.panelTitle">الوقت النجمي</h2>
+    <div class="data-group">
+      <div class="kv"><span data-i18n="sidereal.gst0Label">GST0 — الوقت النجمي بغرينتش عند 0 سا عالمي</span><b data-f="sid.gst0">—</b></div>
+      <div class="kv"><span data-i18n="sidereal.gstLabel">GST — الوقت النجمي بغرينتش الآن</span><b data-f="sid.gst">—</b></div>
+      <div class="kv"><span data-i18n="sidereal.lstLabel">LST — الوقت النجمي المحلي</span><b data-f="sid.lst">—</b></div>
+    </div>
+    <p class="hint" data-i18n="sidereal.hint">GST0 يُحسب عند منتصف الليل بالتوقيت العالمي لليوم الحالي، وGST هو امتداده الدائر مع الزمن الآن بغرينتش، وLST هو GST مضافا إليه خط طول موقعكم شرقا (بالساعات).</p>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <button id="btnSpeakNow" class="action-btn" data-i18n="footer.speakNow">🔊 قراءة الآن</button>
+  <label class="switch-label">
+    <input type="checkbox" id="chkAutoRead" checked>
+    <span data-i18n="footer.autoRead">القراءة الآلية كل نصف ساعة</span>
+  </label>
+  <span id="readerStatus" class="reader-status"></span>
+</footer>
+
+<!-- نافذة الإعدادات -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2 data-i18n="settings.title">الإعدادات</h2>
+
+    <h3 data-i18n="settings.languageHeading">اللغة</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="uiLang" value="ar" checked> العربية</label>
+      <label><input type="radio" name="uiLang" value="fr"> Français</label>
+    </div>
+
+    <h3 data-i18n="settings.locationHeading">الموقع الجغرافي</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="locMode" value="auto" checked> <span data-i18n="settings.locModeAuto">تحديد تلقائي</span></label>
+      <label><input type="radio" name="locMode" value="manual"> <span data-i18n="settings.locModeManual">إدخال يدوي</span></label>
+    </div>
+
+    <div id="locAutoBlock">
+      <button id="btnDetectLocation" class="action-btn" data-i18n="settings.detectLocationBtn">📍 تحديد الموقع تلقائيا</button>
+      <p id="autoLocResult" class="hint"></p>
+    </div>
+
+    <div id="locManualBlock" class="hidden">
+      <div class="field-row">
+        <label data-i18n="settings.latLabel">خط العرض (شمالا +، جنوبا -)</label>
+        <div class="signed-input-row">
+          <button type="button" class="sign-toggle" data-for="inLat" aria-label="تبديل موجب/سالب">+</button>
+          <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inLat" value="21.3891">
+        </div>
+      </div>
+      <div class="field-row">
+        <label data-i18n="settings.lonLabel">خط الطول (شرقا +، غربا -)</label>
+        <div class="signed-input-row">
+          <button type="button" class="sign-toggle" data-for="inLon" aria-label="تبديل موجب/سالب">+</button>
+          <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inLon" value="39.8579">
+        </div>
+      </div>
+    </div>
+
+    <!-- المنطقة الزمنية: قسم مستقل تماما عن قسم الموقع الجغرافي أعلاه (تلقائيا كان أو يدويا) -
+         تُضبط دائما يدويا هنا بصرف النظر عن نجاح أو فشل تحديد الموقع تلقائيا، بناء على طلب
+         صريح بفصل الاثنين؛ انظر التعليق في app.js عند applyDetectedPosition(). -->
+    <h3 data-i18n="settings.tzHeading">المنطقة الزمنية</h3>
+    <p class="hint" data-i18n="settings.tzIndependenceHint">تُضبط المنطقة الزمنية دائما يدويا هنا، بشكل مستقل تماما عن تحديد الموقع الجغرافي (تلقائيا كان أو يدويا) أعلاه.</p>
+    <div class="radio-row">
+      <label><input type="radio" name="tzMode" value="tz" checked> <span data-i18n="settings.tzModeTz">منطقة زمنية (تراعي التوقيت الصيفي تلقائيا)</span></label>
+      <label><input type="radio" name="tzMode" value="offset"> <span data-i18n="settings.tzModeOffset">إزاحة ثابتة عن UTC</span></label>
+    </div>
+    <div class="field-row" id="tzSelectRow">
+      <label data-i18n="settings.tzSelectLabel">المنطقة الزمنية</label>
+      <select id="inTz"></select>
+    </div>
+    <div class="field-row hidden" id="tzOffsetRow">
+      <label data-i18n="settings.tzOffsetLabel">الإزاحة عن UTC بالساعات</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inTzOffset" aria-label="تبديل موجب/سالب">+</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inTzOffset" value="3">
+      </div>
+    </div>
+
+    <!-- تاريخ ووقت محدد: خاص بهذه النسخة فقط (راجع التعليق في app.js عند currentNowUtc) -
+         يأتي بعد قسم المنطقة الزمنية مباشرة لأن تفسير التاريخ/الوقت المدخلين هنا يعتمد عليها. -->
+    <h3 data-i18n="settings.dateTimeHeading">التاريخ والوقت</h3>
+    <p class="hint" data-i18n="settings.dateTimeHint">اختاروا "الوقت الحالي" للحساب المستمر مع الساعة كالمعتاد، أو "تاريخ ووقت محدد" لتجميد كل الحسابات في هذه الصفحة على لحظة بعينها - تُفسَّر حسب المنطقة الزمنية المضبوطة أعلاه - لمقارنة النتائج ببرامج فلكية أو مواقيت أخرى.</p>
+    <div class="radio-row">
+      <label><input type="radio" name="dateTimeMode" value="now" checked> <span data-i18n="settings.dateTimeModeNow">الوقت الحالي (مستمر)</span></label>
+      <label><input type="radio" name="dateTimeMode" value="custom"> <span data-i18n="settings.dateTimeModeCustom">تاريخ ووقت محدد (ثابت)</span></label>
+    </div>
+    <div id="customDateTimeRow" class="hidden">
+      <div class="field-row">
+        <label data-i18n="settings.customDateLabel">التاريخ (بالتوقيت المحلي المضبوط أعلاه)</label>
+        <input type="date" id="inCustomDate">
+      </div>
+      <div class="field-row">
+        <label data-i18n="settings.customTimeLabel">الوقت (بالتوقيت المحلي المضبوط أعلاه)</label>
+        <input type="time" id="inCustomTime" step="1">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label data-i18n="settings.gnomonLabel">طول عود الظل (سم)</label>
+      <input type="number" id="inGnomon" step="1" value="60">
+    </div>
+
+    <h3 data-i18n="settings.prayerHeading">مواقيت الصلاة</h3>
+    <div class="field-row">
+      <label data-i18n="settings.fajrAngleLabel">زاوية الفجر (تحت الأفق)</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inFajrAngle" aria-label="تبديل موجب/سالب">−</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inFajrAngle" value="-18">
+      </div>
+    </div>
+    <div class="field-row">
+      <label data-i18n="settings.asrMethodLabel">مذهب العصر</label>
+      <select id="inAsrFactor">
+        <option value="1" selected data-i18n="prayer.asrOptionJumhur">الجمهور (الشافعية/المالكية/الحنابلة)</option>
+        <option value="2" data-i18n="prayer.asrOptionHanafi">الحنفية</option>
+      </select>
+    </div>
+    <div class="radio-row">
+      <label><input type="radio" name="ishaMode" value="offsetAfterMaghrib" checked> <span data-i18n="settings.ishaModeOffset">العشاء بعد المغرب بعدد دقائق</span></label>
+      <label><input type="radio" name="ishaMode" value="angle"> <span data-i18n="settings.ishaModeAngle">العشاء بزاوية فلكية</span></label>
+    </div>
+    <div class="field-row" id="ishaOffsetRow">
+      <label data-i18n="settings.ishaOffsetLabel">عدد الدقائق بعد المغرب</label>
+      <input type="number" id="inIshaOffset" step="1" value="90">
+    </div>
+    <div class="field-row hidden" id="ishaAngleRow">
+      <label data-i18n="settings.ishaAngleLabel">زاوية العشاء (تحت الأفق)</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inIshaAngle" aria-label="تبديل موجب/سالب">−</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inIshaAngle" value="-18">
+      </div>
+    </div>
+
+    <h3 data-i18n="settings.voiceHeading">القارئ الصوتي</h3>
+    <div class="field-row">
+      <label data-i18n="settings.voiceSelectLabel">صوت القراءة</label>
+      <select id="inVoice"></select>
+    </div>
+    <div class="field-row">
+      <label data-i18n="settings.rateLabel">سرعة النطق</label>
+      <input type="range" id="inRate" min="0.5" max="1.5" step="0.05" value="0.95">
+    </div>
+    <button type="button" id="btnTestVoice" class="action-btn" data-i18n="settings.testVoiceBtn">🔊 تجربة الصوت</button>
+    <p class="hint" data-i18n="settings.voiceHint">جودة النطق تعتمد على الصوت العربي المثبَّت على جهازكم لا على التطبيق نفسه - إن توفر أكثر من صوت عربي جرّبوها هنا واختاروا الأوضح. تقليل السرعة قد يحسّن وضوح بعض الأصوات.</p>
+
+    <div class="modal-actions">
+      <button id="btnSaveSettings" class="action-btn primary" data-i18n="settings.save">حفظ</button>
+      <button id="btnCloseSettings" class="action-btn" data-i18n="settings.close">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="src/ui/app.js"></script>
+</body>
+</html>
