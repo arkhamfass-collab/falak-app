@@ -59,21 +59,48 @@ export function renderHeader (root, r, lang = 'ar') {
   }
 }
 
-export function renderPrayerTimes (root, r, localPartsFn) {
+// ترتيب موحَّد واحد للمواقيت الشرعية العشرة (الستة الأصلية + الأربعة الإضافية)، بالترتيب
+// الزمني المتسلسل الذي طلب المستخدم اعتماده: الثلث الأخير، الفجر، الإسفار الأعلى، الشروق،
+// حل النافلة، الزوال (الظهر)، العصر، نهاية المختار للعصر، المغرب، العشاء. data-k هنا هو مفتاح
+// بطاقة العرض (prayer-card)؛ field هو اسم الحقل المقابل في r.prayerTimes؛ extra=true للأربعة
+// التي قد لا تقع أصلا بعض الأيام (فتحتاج رسالة بديلة لا شَرطة مجردة - كـprayer.extra سابقا).
+const PRAYER_ORDER = [
+  { k: 'lastThird', field: 'lastThirdOfNightStart', extra: true },
+  { k: 'fajr', field: 'fajr', extra: false },
+  { k: 'isfarAla', field: 'isfarAlaStart', extra: true },
+  { k: 'sunrise', field: 'sunrise', extra: false },
+  { k: 'nafl', field: 'naflTime', extra: true },
+  { k: 'dhuhr', field: 'dhuhr', extra: false },
+  { k: 'asr', field: 'asr', extra: false },
+  { k: 'asrMukhtarEnd', field: 'asrMukhtarEnd', extra: true },
+  { k: 'maghrib', field: 'maghrib', extra: false },
+  { k: 'isha', field: 'isha', extra: false }
+]
+
+export function renderPrayerTimes (root, r, localPartsFn, lang = 'ar') {
   const p = r.prayerTimes
-  const order = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha']
-  for (const k of order) {
+  const isAr = lang !== 'fr'
+  const fallback = i18n.t('prayer.extraNotTodayFallback', lang)
+  for (const { k, field, extra } of PRAYER_ORDER) {
     const card = root.querySelector(`.prayer-card[data-k="${k}"]`)
     if (!card) continue
-    card.querySelector('.ptime').textContent = fmtClockOrDash(p[k], localPartsFn)
+    const val = p[field]
+    const el = card.querySelector('.ptime')
+    if (extra) {
+      el.textContent = fmtClockOrMsg(val, localPartsFn, fallback)
+      el.classList.toggle('rtl-value', !val && isAr)
+    } else {
+      el.textContent = fmtClockOrDash(val, localPartsFn)
+      el.classList.remove('rtl-value')
+    }
   }
   const now = r.time.utcDate.getTime()
   let currentKey = null
-  for (const k of order) {
-    const d = p[k]
+  for (const { k, field } of PRAYER_ORDER) {
+    const d = p[field]
     if (d && d.getTime() <= now) currentKey = k
   }
-  for (const k of order) {
+  for (const { k } of PRAYER_ORDER) {
     const card = root.querySelector(`.prayer-card[data-k="${k}"]`)
     if (card) card.classList.toggle('current', k === currentKey)
   }
@@ -107,10 +134,12 @@ export function renderSun (root, r, localPartsFn, lang = 'ar') {
     { rtl: s.shadowAzimuthNowDeg == null && isAr })
   setByDataF(root, 'sun.dayLen', format.formatHMS(s.dayLengthHours, { showSeconds: false }))
   setByDataF(root, 'sun.nightLen', format.formatHMS(s.nightLengthHours, { showSeconds: false }))
-  setByDataF(root, 'sun.zodiacSign', isAr ? s.zodiac.nameArabic : s.zodiac.nameFrench, { rtl: isAr })
+  // الترتيب المطلوب: الدرجة في البرج قبل اسم البرج، ثم الدرجة في المنزلة قبل اسم المنزلة (برجها
+  // الحقيقي/التحقيقي - انظر ayanamsaDeg في zodiac.js وموضع استعمالها في engine.js)
   setByDataF(root, 'sun.zodiacDeg', format.formatDMS(s.zodiac.degreeInSign))
-  setByDataF(root, 'sun.manzil', isAr ? s.manzil.nameArabic : s.manzil.nameFrench, { rtl: isAr })
+  setByDataF(root, 'sun.zodiacSign', isAr ? s.zodiac.nameArabic : s.zodiac.nameFrench, { rtl: isAr })
   setByDataF(root, 'sun.manzilDeg', format.formatDMS(s.manzil.degreeInManzil))
+  setByDataF(root, 'sun.manzil', isAr ? s.manzil.nameArabic : s.manzil.nameFrench, { rtl: isAr })
 }
 
 export function renderMoon (root, r, localPartsFn, lang = 'ar') {
@@ -135,10 +164,10 @@ export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   setByDataF(root, 'moon.illum', (m.illuminatedFraction * 100).toFixed(1) + '%')
   setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: isAr })
   setByDataF(root, 'moon.nextNewLocal', fmtDateAndClock(m.nextNewMoon.utcDate, localPartsFn), { rtl: isAr })
-  setByDataF(root, 'moon.zodiacSign', isAr ? m.zodiac.nameArabic : m.zodiac.nameFrench, { rtl: isAr })
   setByDataF(root, 'moon.zodiacDeg', format.formatDMS(m.zodiac.degreeInSign))
-  setByDataF(root, 'moon.manzil', isAr ? m.manzil.nameArabic : m.manzil.nameFrench, { rtl: isAr })
+  setByDataF(root, 'moon.zodiacSign', isAr ? m.zodiac.nameArabic : m.zodiac.nameFrench, { rtl: isAr })
   setByDataF(root, 'moon.manzilDeg', format.formatDMS(m.manzil.degreeInManzil))
+  setByDataF(root, 'moon.manzil', isAr ? m.manzil.nameArabic : m.manzil.nameFrench, { rtl: isAr })
 }
 
 export function renderSidereal (root, r) {
@@ -147,21 +176,15 @@ export function renderSidereal (root, r) {
   setByDataF(root, 'sid.lst', format.formatHMS(r.sidereal.lstHours))
 }
 
-export function renderPrayerExtras (root, r, localPartsFn, lang = 'ar') {
-  const p = r.prayerTimes
-  const isAr = lang !== 'fr'
-  const fallback = i18n.t('prayer.extraNotTodayFallback', lang)
-  setByDataF(root, 'prayer.extra.lastThird', fmtClockOrMsg(p.lastThirdOfNightStart, localPartsFn, fallback), { rtl: !p.lastThirdOfNightStart && isAr })
-  setByDataF(root, 'prayer.extra.isfarAla', fmtClockOrMsg(p.isfarAlaStart, localPartsFn, fallback), { rtl: !p.isfarAlaStart && isAr })
-  setByDataF(root, 'prayer.extra.nafl', fmtClockOrMsg(p.naflTime, localPartsFn, fallback), { rtl: !p.naflTime && isAr })
-  setByDataF(root, 'prayer.extra.asrMukhtarEnd', fmtClockOrMsg(p.asrMukhtarEnd, localPartsFn, fallback), { rtl: !p.asrMukhtarEnd && isAr })
-}
-
 export function renderQibla (root, r, localPartsFn, lang = 'ar') {
   const q = r.qibla
   const isAr = lang !== 'fr'
   const fallback = i18n.t('qibla.notTodayFallback', lang)
   setByDataF(root, 'qibla.azimuth', format.formatDMS(q.azimuthDeg))
+  setByDataF(root, 'qibla.direction', isAr ? q.directionNameArabic : q.directionNameFrench, { rtl: isAr })
+  setByDataF(root, 'qibla.altitudeAtFacing',
+    q.sunAltitudeAtFacingDeg != null ? format.formatDMS(q.sunAltitudeAtFacingDeg, { showPlus: true }) : fallback,
+    { rtl: q.sunAltitudeAtFacingDeg == null && isAr })
   setByDataF(root, 'qibla.sunToward', fmtClockOrMsg(q.sunTowardQiblaDate, localPartsFn, fallback), { rtl: !q.sunTowardQiblaDate && isAr })
   setByDataF(root, 'qibla.shadowToward', fmtClockOrMsg(q.shadowTowardQiblaDate, localPartsFn, fallback), { rtl: !q.shadowTowardQiblaDate && isAr })
 }
@@ -185,8 +208,7 @@ export function applyStaticLanguage (root, lang) {
 
 export function renderAll (root, r, localPartsFn, lang = 'ar') {
   renderHeader(root, r, lang)
-  renderPrayerTimes(root, r, localPartsFn)
-  renderPrayerExtras(root, r, localPartsFn, lang)
+  renderPrayerTimes(root, r, localPartsFn, lang)
   renderSun(root, r, localPartsFn, lang)
   renderMoon(root, r, localPartsFn, lang)
   renderSidereal(root, r)
@@ -196,7 +218,6 @@ export function renderAll (root, r, localPartsFn, lang = 'ar') {
 export default {
   renderHeader,
   renderPrayerTimes,
-  renderPrayerExtras,
   renderSun,
   renderMoon,
   renderSidereal,

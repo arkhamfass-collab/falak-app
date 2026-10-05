@@ -79,12 +79,18 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   // سمت الظل الآن (نظير سمت الشمس): معنى فقط حين يوجد ظل فعلا (الشمس فوق الأفق)
   const shadowAzimuthNowDeg = shadowNowCm != null ? sunModule.shadowAzimuthDeg(sunHz.azimuthDeg) : null
 
-  // البرج والمنزلة: تصنيفان للطول البروجي نفسه (sunEcl.lon) لا حسابان مستقلان - انظر zodiac.js.
+  // البرج والمنزلة: تصنيفان مشتقان من الطول البروجي، لكن لـ"البرج الحقيقي/التحقيقي" الذي طلب
+  // المستخدم اعتماده (لا "التقديري" التقويمي) يُستعمل الطول البروجي بعد طرح الأيانامسا منه -
+  // أي الموضع الحقيقي نسبة للنجوم الثابتة، لا نسبة لنقطة الاعتدال المتحركة. انظر التعليق المفصَّل
+  // على ayanamsaDeg في zodiac.js. يبقى sun.ecliptic.longitudeDeg أدناه (الطول البروجي المعروض)
+  // هو القيمة التقويمية المعتادة بلا تصحيح - التصحيح يخص تصنيف البرج/المنزلة فقط لا الطول نفسه.
   // الاسمان بكلتا اللغتين يُحسبان هنا (كـmoonPhase.phaseNameArabic/French) لا في طبقة العرض،
   // فالاسم بيانات مشتقة من الفهرس المحسوب لا نص واجهة ثابت.
+  const ayanamsaDeg = zodiacModule.ayanamsaDeg(nowUtc)
   const sunLonDeg = sunEcl.lon * R2D
-  const sunZodiac = zodiacModule.zodiacSignInfo(sunLonDeg)
-  const sunManzil = zodiacModule.manzilInfo(sunLonDeg)
+  const sunSiderealLonDeg = formatModule.normalizeDeg360(sunLonDeg - ayanamsaDeg)
+  const sunZodiac = zodiacModule.zodiacSignInfo(sunSiderealLonDeg)
+  const sunManzil = zodiacModule.manzilInfo(sunSiderealLonDeg)
 
   const sun = {
     ecliptic: { longitudeDeg: sunLonDeg, distanceAU: sunEcl.range },
@@ -123,8 +129,9 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const nextNewMoonLocal = timeutilModule.localPartsFromUTC(moonPhase.nextNewMoonUTCDate, observerTime)
 
   const moonLonDeg = moonData.ecl.lon * R2D
-  const moonZodiac = zodiacModule.zodiacSignInfo(moonLonDeg)
-  const moonManzil = zodiacModule.manzilInfo(moonLonDeg)
+  const moonSiderealLonDeg = formatModule.normalizeDeg360(moonLonDeg - ayanamsaDeg)
+  const moonZodiac = zodiacModule.zodiacSignInfo(moonSiderealLonDeg)
+  const moonManzil = zodiacModule.manzilInfo(moonSiderealLonDeg)
 
   const moon = {
     ecliptic: { longitudeDeg: moonLonDeg, latitudeDeg: moonData.ecl.lat * R2D, distanceKm: moonData.range },
@@ -167,6 +174,9 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const qiblaAlignment = qiblaModule.qiblaAlignmentTimes(sunRTS.riseDate, sunRTS.setDate, latDeg, lonEastDeg, qiblaAzimuthDeg)
   const qibla = {
     azimuthDeg: qiblaAzimuthDeg,
+    directionNameArabic: qiblaModule.qiblaDirectionNameArabic(qiblaAzimuthDeg),
+    directionNameFrench: qiblaModule.qiblaDirectionNameFrench(qiblaAzimuthDeg),
+    sunAltitudeAtFacingDeg: qiblaModule.sunAltitudeAtDate(qiblaAlignment.sunTowardQiblaDate, latDeg, lonEastDeg),
     sunTowardQiblaDate: qiblaAlignment.sunTowardQiblaDate,
     shadowTowardQiblaDate: qiblaAlignment.shadowTowardQiblaDate
   }

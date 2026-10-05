@@ -118,4 +118,64 @@ export function qiblaAlignmentTimes (sunriseDate, sunsetDate, latDeg, lonEastDeg
   }
 }
 
-export default { KAABA_LAT_DEG, KAABA_LON_EAST_DEG, qiblaAzimuthDeg, qiblaAlignmentTimes }
+/** ارتفاع الشمس (بالدرجات) عند لحظة UTC معيّنة - أداة مستقلة عن sunAzimuthAtUTC (تكرار قصير
+ * متعمَّد بدل تعميم تلك الدالة الداخلية، حتى لا يُلمَس منطق findCrossing المُختبَر بعناية). */
+function sunAltitudeAtUTC (utcDate, latDeg, lonEastDeg) {
+  const jdUT = julian.DateToJD(utcDate)
+  const jde = julian.DateToJDE(utcDate)
+  const { eq } = sunModule.sunEclipticAndEquatorial(jde)
+  return sunModule.horizontalFromEquatorial(jdUT, eq, latDeg, lonEastDeg).altitudeDeg
+}
+
+/**
+ * ارتفاع الشمس عند لحظة استقبالها للقبلة (sunTowardQiblaDate من qiblaAlignmentTimes أعلاه) -
+ * أو null إن لم تحدث هذه اللحظة أصلا ذلك اليوم عند هذا الموقع (نفس احتمال findCrossing أعلاه).
+ * @param {Date|null} alignmentDate
+ * @param {number} latDeg
+ * @param {number} lonEastDeg
+ */
+export function sunAltitudeAtDate (alignmentDate, latDeg, lonEastDeg) {
+  if (!alignmentDate) return null
+  return sunAltitudeAtUTC(alignmentDate, latDeg, lonEastDeg)
+}
+
+const QIBLA_DIR_QUAD_NAMES_AR = [['شمالية', 'شرقية'], ['شرقية', 'جنوبية'], ['جنوبية', 'غربية'], ['غربية', 'شمالية']]
+const QIBLA_DIR_PURE_AXES_AR = [[0, 'شمالية'], [90, 'شرقية'], [180, 'جنوبية'], [270, 'غربية'], [360, 'شمالية']]
+
+/**
+ * اسم جهة القبلة بالعربية بصيغة مركَّبة، على اصطلاح "الجهة الرئيسية الأقرب للسمت تُذكر أولا"
+ * (مثلا سمت بين الشمال والشرق لكنه أقرب للشرق يُسمَّى "شرقية شمالية" لا "شمالية شرقية") - بتأكيد
+ * من مثال المستخدم الخاص بموقعه (قِبلتهم "شرقية شمالية"، شرق مذكورة أولا). عند قرب السمت من
+ * أحد المحاور الأربعة الرئيسية (بفارق درجتين أو أقل) يُرجَع اسم مفرد بلا تركيب.
+ * @param {number} azimuthDeg
+ * @returns {string}
+ */
+export function qiblaDirectionNameArabic (azimuthDeg) {
+  const az = normalizeDeg360(azimuthDeg)
+  for (const [axisDeg, name] of QIBLA_DIR_PURE_AXES_AR) {
+    if (Math.abs(az - axisDeg) <= 2) return name
+  }
+  const quadIndex = Math.floor(az / 90)
+  const offsetInQuad = az - quadIndex * 90
+  const [fromName, toName] = QIBLA_DIR_QUAD_NAMES_AR[quadIndex]
+  return offsetInQuad <= 45 ? `${fromName} ${toName}` : `${toName} ${fromName}`
+}
+
+const QIBLA_DIR_NAMES_FR = ['Nord', 'Nord-Est', 'Est', 'Sud-Est', 'Sud', 'Sud-Ouest', 'Ouest', 'Nord-Ouest']
+
+/** نظيرتها الفرنسية - على الاصطلاح الفرنسي المعتاد لثمانية الاتجاهات (بلا تركيب "الأقرب أولا"،
+ * فالفرنسية لا تُفرِّق عند دقة ٨ جهات - "Nord-Est" دائما لكل الزاوية 22.5°-67.5° مثلا). */
+export function qiblaDirectionNameFrench (azimuthDeg) {
+  const az = normalizeDeg360(azimuthDeg)
+  return QIBLA_DIR_NAMES_FR[Math.round(az / 45) % 8]
+}
+
+export default {
+  KAABA_LAT_DEG,
+  KAABA_LON_EAST_DEG,
+  qiblaAzimuthDeg,
+  qiblaAlignmentTimes,
+  sunAltitudeAtDate,
+  qiblaDirectionNameArabic,
+  qiblaDirectionNameFrench
+}

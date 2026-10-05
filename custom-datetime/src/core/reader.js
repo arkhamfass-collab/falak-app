@@ -440,30 +440,31 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     `Date du calendrier grégorien : ${frenchNumberToWords(r.time.gregorian.day)} ${r.time.gregorian.monthNameFrench} ${frenchNumberToWords(r.time.gregorian.year)}.`
   )
 
-  // 2) مواقيت الصلاة
+  // 2) مواقيت الصلاة (مدمَجة في تسلسل زمني واحد: الثلث الأخير، الفجر، الإسفار الأعلى، الشروق،
+  // حل النافلة، الزوال (الدهر)، العصر، نهاية المختار للعصر، المغرب، العشاء - كما طلب المستخدم)
   const p = r.prayerTimes
   sections.push(
     "Horaires de prière aujourd'hui : " +
-    `Fajr à ${dateToClockWordsFrench(p.fajr, localPartsFn)}, ` +
-    `lever du soleil à ${dateToClockWordsFrench(p.sunrise, localPartsFn)}, ` +
-    `Dhuhr à ${dateToClockWordsFrench(p.dhuhr, localPartsFn)}, ` +
-    `Asr à ${dateToClockWordsFrench(p.asr, localPartsFn)}, ` +
-    `Maghrib à ${dateToClockWordsFrench(p.maghrib, localPartsFn)}, ` +
-    `et Isha à ${dateToClockWordsFrench(p.isha, localPartsFn)}.`
-  )
-  sections.push(
-    'Horaires chariatiques supplémentaires : ' +
     `début du dernier tiers de la nuit à ${dateToClockWordsFrenchOr(p.lastThirdOfNightStart, localPartsFn, 'non déterminé cette nuit à votre position')}, ` +
-    `Isfar à ${dateToClockWordsFrench(p.isfarAlaStart, localPartsFn)}, ` +
-    `heure de licéité de la prière surérogatoire à ${dateToClockWordsFrench(p.naflTime, localPartsFn)}, ` +
-    `et fin du temps préféré de l'Asr à ${dateToClockWordsFrench(p.asrMukhtarEnd, localPartsFn)}.`
+    `puis le Fajr à ${dateToClockWordsFrench(p.fajr, localPartsFn)}, ` +
+    `puis l'Isfar à ${dateToClockWordsFrench(p.isfarAlaStart, localPartsFn)}, ` +
+    `puis le lever du soleil à ${dateToClockWordsFrench(p.sunrise, localPartsFn)}, ` +
+    `puis l'heure de licéité de la prière surérogatoire à ${dateToClockWordsFrench(p.naflTime, localPartsFn)}, ` +
+    `puis le Dhuhr à ${dateToClockWordsFrench(p.dhuhr, localPartsFn)}, ` +
+    `puis l'Asr à ${dateToClockWordsFrench(p.asr, localPartsFn)}, ` +
+    `puis la fin du temps préféré de l'Asr à ${dateToClockWordsFrench(p.asrMukhtarEnd, localPartsFn)}, ` +
+    `puis le Maghrib à ${dateToClockWordsFrench(p.maghrib, localPartsFn)}, ` +
+    `et enfin l'Isha à ${dateToClockWordsFrench(p.isha, localPartsFn)}.`
   )
 
-  // 3) الشمس
+  // 3) الشمس (ثم اتجاه القبلة مباشرة بعدها - مدمَج هنا بعد طول الليل، كما طلب المستخدم، بدل
+  // قسم مستقل في آخر النص كما كان سابقا)
   const s = r.sun
+  const q = r.qibla
   sections.push(
     'Données du Soleil : ' +
     `longitude écliptique ${dmsToFrenchWords(s.ecliptic.longitudeDeg)}, distance à la Terre ${s.ecliptic.distanceAU.toFixed(4)} unités astronomiques. ` +
+    `Il se trouve actuellement à ${dmsToFrenchWords(s.zodiac.degreeInSign)} de son signe zodiacal véritable : ${s.zodiac.nameFrench}, et à ${dmsToFrenchWords(s.manzil.degreeInManzil)} de sa demeure lunaire : ${s.manzil.nameFrench}. ` +
     `Ascension droite ${hmsAngleToFrenchWords(s.equatorial.rightAscensionDeg)}, déclinaison ${dmsToFrenchWords(s.equatorial.declinationDeg, 'declination')}. ` +
     `Hauteur actuelle ${dmsToFrenchWords(s.horizontal.altitudeDeg)}, azimut ${dmsToFrenchWords(s.horizontal.azimuthDeg)}, angle horaire ${hmsAngleToFrenchWords(s.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `Lever à ${dateToClockWordsFrench(s.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(s.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(s.riseTransitSet.setDate, localPartsFn)}. ` +
@@ -471,8 +472,10 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     (s.shadowNowCm != null ? `La longueur de l'ombre actuelle est de ${s.shadowNowCm.toFixed(1)} centimètres. ` : "Le Soleil est actuellement sous l'horizon, il n'y a donc pas d'ombre. ") +
     (s.shadowAzimuthNowDeg != null ? `Et l'azimut de cette ombre est de ${dmsToFrenchWords(s.shadowAzimuthNowDeg)}. ` : '') +
     `Durée du jour ${hoursDecimalToFrenchDuration(s.dayLengthHours)}, durée de la nuit ${hoursDecimalToFrenchDuration(s.nightLengthHours)}. ` +
-    `Signe zodiacal actuel : ${s.zodiac.nameFrench}, à ${dmsToFrenchWords(s.zodiac.degreeInSign)} de ce signe. ` +
-    `Demeure lunaire actuelle : ${s.manzil.nameFrench}, à ${dmsToFrenchWords(s.manzil.degreeInManzil)} de cette demeure.`
+    `L'arc de l'azimut de la Qibla depuis votre position est de ${dmsToFrenchWords(q.azimuthDeg)}, soit en direction ${q.directionNameFrench}. ` +
+    `La hauteur du Soleil au moment où il fait face à la Qibla est de ${q.sunAltitudeAtFacingDeg != null ? dmsToFrenchWords(q.sunAltitudeAtFacingDeg) : "cela ne se produit pas aujourd'hui à votre position"}. ` +
+    `Le Soleil fait face à la Qibla aujourd'hui à ${dateToClockWordsFrenchOr(q.sunTowardQiblaDate, localPartsFn, "cela ne se produit pas aujourd'hui à votre position")}, ` +
+    `et l'ombre indique la Qibla à ${dateToClockWordsFrenchOr(q.shadowTowardQiblaDate, localPartsFn, "cela ne se produit pas aujourd'hui à votre position")}.`
   )
 
   // 4) القمر
@@ -480,14 +483,13 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
   sections.push(
     'Données de la Lune : ' +
     `longitude écliptique ${dmsToFrenchWords(m.ecliptic.longitudeDeg)}, latitude écliptique ${dmsToFrenchWords(m.ecliptic.latitudeDeg, 'latitude')}. ` +
+    `Elle se trouve actuellement à ${dmsToFrenchWords(m.zodiac.degreeInSign)} de son signe zodiacal véritable : ${m.zodiac.nameFrench}, et à ${dmsToFrenchWords(m.manzil.degreeInManzil)} de sa demeure lunaire : ${m.manzil.nameFrench}. ` +
     `Ascension droite ${hmsAngleToFrenchWords(m.equatorial.rightAscensionDeg)}, déclinaison ${dmsToFrenchWords(m.equatorial.declinationDeg, 'declination')}. ` +
     `Hauteur actuelle ${dmsToFrenchWords(m.horizontal.altitudeDeg)}, azimut ${dmsToFrenchWords(m.horizontal.azimuthDeg)}, angle horaire ${hmsAngleToFrenchWords(m.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `Lever à ${dateToClockWordsFrench(m.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(m.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(m.riseTransitSet.setDate, localPartsFn)}. ` +
     `Élongation par rapport au Soleil ${dmsToFrenchWords(m.elongationDeg)}, âge ${m.ageDays.toFixed(1)} jours, distance à la Terre ${Math.round(m.distanceKm).toLocaleString('en-US')} kilomètres. ` +
     `Phase actuelle : ${m.phaseNameFrench}, taux d'éclairement ${Math.round(m.illuminatedFraction * 100)} pour cent. ` +
-    nextNewMoonSentenceFrench(m.nextNewMoon) + ' ' +
-    `Signe zodiacal actuel : ${m.zodiac.nameFrench}, à ${dmsToFrenchWords(m.zodiac.degreeInSign)} de ce signe. ` +
-    `Demeure lunaire actuelle : ${m.manzil.nameFrench}, à ${dmsToFrenchWords(m.manzil.degreeInManzil)} de cette demeure.`
+    nextNewMoonSentenceFrench(m.nextNewMoon)
   )
 
   // 5) الوقت النجمي
@@ -498,19 +500,10 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     return hmsClockToFrenchWords(hh, mm)
   }
   sections.push(
-    'Temps sidéral : ' +
+    'Enfin, le temps sidéral : ' +
     `le temps sidéral de Greenwich à minuit temps universel était de ${hmsWordsFr(sd.gst0Hours)}. ` +
     `Le temps sidéral actuel de Greenwich est de ${hmsWordsFr(sd.gstHours)}. ` +
     `Et le temps sidéral local de votre position est actuellement de ${hmsWordsFr(sd.lstHours)}.`
-  )
-
-  // 6) القبلة
-  const q = r.qibla
-  sections.push(
-    'Enfin, la direction de la Qibla : ' +
-    `son azimut depuis votre position est de ${dmsToFrenchWords(q.azimuthDeg)}. ` +
-    `Le Soleil fait face à la Qibla aujourd'hui à ${dateToClockWordsFrenchOr(q.sunTowardQiblaDate, localPartsFn, "cela ne se produit pas aujourd'hui à votre position")}, ` +
-    `et l'ombre indique la Qibla à ${dateToClockWordsFrenchOr(q.shadowTowardQiblaDate, localPartsFn, "cela ne se produit pas aujourd'hui à votre position")}.`
   )
 
   return sections.join('\n\n')
@@ -538,30 +531,31 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     `التاريخ الميلادي: ${arabicNumberToWords(r.time.gregorian.day)} ${r.time.gregorian.monthNameArabic} سنة ${arabicNumberToWords(r.time.gregorian.year)} ميلادية.`
   )
 
-  // 2) مواقيت الصلاة
+  // 2) مواقيت الصلاة (مدمَجة في تسلسل زمني واحد: الثلث الأخير، الفجر، الإسفار الأعلى، الشروق،
+  // حل النافلة، الزوال، العصر، نهاية المختار للعصر، المغرب، العشاء - كما طلب المستخدم صريحا)
   const p = r.prayerTimes
   sections.push(
     'مواقيت الصلاة اليوم: ' +
-    `الفجر ${dateToClockWords(p.fajr, localPartsFn)}، ` +
-    `الشروق ${dateToClockWords(p.sunrise, localPartsFn)}، ` +
-    `الظهر ${dateToClockWords(p.dhuhr, localPartsFn)}، ` +
-    `العصر ${dateToClockWords(p.asr, localPartsFn)}، ` +
-    `المغرب ${dateToClockWords(p.maghrib, localPartsFn)}، ` +
+    `بداية الثلث الأخير من الليل ${dateToClockWordsOr(p.lastThirdOfNightStart, localPartsFn, 'غير متحقق عند موقعكم هذه الليلة')}، ` +
+    `ثم الفجر ${dateToClockWords(p.fajr, localPartsFn)}، ` +
+    `ثم الإسفار الأعلى ${dateToClockWords(p.isfarAlaStart, localPartsFn)}، ` +
+    `ثم الشروق ${dateToClockWords(p.sunrise, localPartsFn)}، ` +
+    `ثم وقت حل النافلة ${dateToClockWords(p.naflTime, localPartsFn)}، ` +
+    `ثم الزوال ${dateToClockWords(p.dhuhr, localPartsFn)}، ` +
+    `ثم العصر ${dateToClockWords(p.asr, localPartsFn)}، ` +
+    `ثم نهاية الوقت المختار للعصر ${dateToClockWords(p.asrMukhtarEnd, localPartsFn)}، ` +
+    `ثم المغرب ${dateToClockWords(p.maghrib, localPartsFn)}، ` +
     `والعشاء ${dateToClockWords(p.isha, localPartsFn)}.`
   )
-  sections.push(
-    'ومن الأوقات الشرعية الإضافية: ' +
-    `بداية الثلث الأخير من الليل ${dateToClockWordsOr(p.lastThirdOfNightStart, localPartsFn, 'غير متحقق عند موقعكم هذه الليلة')}، ` +
-    `والإسفار الأعلى ${dateToClockWords(p.isfarAlaStart, localPartsFn)}، ` +
-    `ووقت حل النافلة ${dateToClockWords(p.naflTime, localPartsFn)}، ` +
-    `ونهاية الوقت المختار للعصر ${dateToClockWords(p.asrMukhtarEnd, localPartsFn)}.`
-  )
 
-  // 3) الشمس
+  // 3) الشمس (ثم اتجاه القبلة مباشرة بعدها - مدمَج هنا بعد طول الليل، كما طلب المستخدم صريحا،
+  // بدل قسم مستقل في آخر النص كما كان سابقا)
   const s = r.sun
+  const q = r.qibla
   sections.push(
     'أما بيانات الشمس: ' +
     `طولها البروجي ${dmsToArabicWords(s.ecliptic.longitudeDeg)}، وبعدها عن الأرض ${s.ecliptic.distanceAU.toFixed(4)} وحدة فلكية. ` +
+    `وهي الآن عند ${dmsToArabicWords(s.zodiac.degreeInSign)} من برجها الحقيقي: ${s.zodiac.nameArabic}، وعند ${dmsToArabicWords(s.manzil.degreeInManzil)} من منزلتها: ${s.manzil.nameArabic}. ` +
     `مطلعها المستقيم ${hmsAngleToArabicWords(s.equatorial.rightAscensionDeg)}، وميلها ${dmsToArabicWords(s.equatorial.declinationDeg, 'declination')}. ` +
     `ارتفاعها الآن ${dmsToArabicWords(s.horizontal.altitudeDeg)}، وسمتها ${dmsToArabicWords(s.horizontal.azimuthDeg)}، وزاويتها الساعية ${hmsAngleToArabicWords(s.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `شروقها ${dateToClockWords(s.riseTransitSet.riseDate, localPartsFn)}، وزوالها ${dateToClockWords(s.riseTransitSet.transitDate, localPartsFn)}، وغروبها ${dateToClockWords(s.riseTransitSet.setDate, localPartsFn)}. ` +
@@ -569,7 +563,10 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     (s.shadowNowCm != null ? `وطول الظل الآن ${s.shadowNowCm.toFixed(1)} سنتيمترا. ` : 'والشمس الآن تحت الأفق فلا ظل لها. ') +
     (s.shadowAzimuthNowDeg != null ? `وسمت هذا الظل ${dmsToArabicWords(s.shadowAzimuthNowDeg)}. ` : '') +
     `طول النهار ${hoursDecimalToArabicDuration(s.dayLengthHours)}، وطول الليل ${hoursDecimalToArabicDuration(s.nightLengthHours)}. ` +
-    `وهي الآن في برج ${s.zodiac.nameArabic}، عند ${dmsToArabicWords(s.zodiac.degreeInSign)} منه، وفي منزلة ${s.manzil.nameArabic}، عند ${dmsToArabicWords(s.manzil.degreeInManzil)} منها.`
+    `ثم قوس سمت القبلة من موقعكم ${dmsToArabicWords(q.azimuthDeg)}، وجهتها ${q.directionNameArabic}. ` +
+    `وارتفاع الشمس عند استقبال القبلة ${q.sunAltitudeAtFacingDeg != null ? dmsToArabicWords(q.sunAltitudeAtFacingDeg) : 'لا يحدث اليوم عند موقعكم'}. ` +
+    `ويكون اتجاه الشمس نحو القبلة اليوم ${dateToClockWordsOr(q.sunTowardQiblaDate, localPartsFn, 'لا يحدث اليوم عند موقعكم')}، ` +
+    `واتجاه الظل نحو القبلة ${dateToClockWordsOr(q.shadowTowardQiblaDate, localPartsFn, 'لا يحدث اليوم عند موقعكم')}.`
   )
 
   // 4) القمر
@@ -577,13 +574,13 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
   sections.push(
     'وأما بيانات القمر: ' +
     `طوله البروجي ${dmsToArabicWords(m.ecliptic.longitudeDeg)}، وعرضه البروجي ${dmsToArabicWords(m.ecliptic.latitudeDeg, 'latitude')}. ` +
+    `وهو الآن عند ${dmsToArabicWords(m.zodiac.degreeInSign)} من برجه الحقيقي: ${m.zodiac.nameArabic}، وعند ${dmsToArabicWords(m.manzil.degreeInManzil)} من منزلته: ${m.manzil.nameArabic}. ` +
     `مطلعه المستقيم ${hmsAngleToArabicWords(m.equatorial.rightAscensionDeg)}، وميله ${dmsToArabicWords(m.equatorial.declinationDeg, 'declination')}. ` +
     `ارتفاعه الآن ${dmsToArabicWords(m.horizontal.altitudeDeg)}، وسمته ${dmsToArabicWords(m.horizontal.azimuthDeg)}، وزاويته الساعية ${hmsAngleToArabicWords(m.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `شروقه ${dateToClockWords(m.riseTransitSet.riseDate, localPartsFn)}، وعبوره ${dateToClockWords(m.riseTransitSet.transitDate, localPartsFn)}، وغروبه ${dateToClockWords(m.riseTransitSet.setDate, localPartsFn)}. ` +
     `مطاله عن الشمس ${dmsToArabicWords(m.elongationDeg)}، وعمره ${m.ageDays.toFixed(1)} يوما، وبعده عن الأرض ${Math.round(m.distanceKm).toLocaleString('en-US')} كيلومترا. ` +
     `طوره الحالي: ${m.phaseNameArabic}، بنسبة إضاءة ${Math.round(m.illuminatedFraction * 100)} بالمئة. ` +
-    nextNewMoonSentence(m.nextNewMoon) + ' ' +
-    `وهو الآن في برج ${m.zodiac.nameArabic}، عند ${dmsToArabicWords(m.zodiac.degreeInSign)} منه، وفي منزلة ${m.manzil.nameArabic}، عند ${dmsToArabicWords(m.manzil.degreeInManzil)} منها.`
+    nextNewMoonSentence(m.nextNewMoon)
   )
 
   // 5) الوقت النجمي
@@ -594,19 +591,10 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     return hmsClockToArabicWords(hh, mm)
   }
   sections.push(
-    'وأما الوقت النجمي: ' +
+    'وأخيرا الوقت النجمي: ' +
     `الوقت النجمي بغرينتش عند منتصف الليل العالمي كان ${hmsWords(sd.gst0Hours)}. ` +
     `الوقت النجمي الحالي بغرينتش ${hmsWords(sd.gstHours)}. ` +
     `والوقت النجمي المحلي لموقعكم الآن ${hmsWords(sd.lstHours)}.`
-  )
-
-  // 6) القبلة
-  const q = r.qibla
-  sections.push(
-    'وأخيرا، اتجاه القبلة: ' +
-    `سمتها من موقعكم ${dmsToArabicWords(q.azimuthDeg)}. ` +
-    `ويكون اتجاه الشمس نحو القبلة اليوم ${dateToClockWordsOr(q.sunTowardQiblaDate, localPartsFn, 'لا يحدث اليوم عند موقعكم')}، ` +
-    `واتجاه الظل نحو القبلة ${dateToClockWordsOr(q.shadowTowardQiblaDate, localPartsFn, 'لا يحدث اليوم عند موقعكم')}.`
   )
 
   return sections.join('\n\n')

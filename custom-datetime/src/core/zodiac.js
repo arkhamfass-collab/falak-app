@@ -77,7 +77,35 @@ export function manzilName (manzilIndex, lang = 'ar') {
   return lang === 'fr' ? MANAZIL_FR[manzilIndex] : MANAZIL_AR[manzilIndex]
 }
 
+/**
+ * "الأيانامسا" (الفرق بين الطول البروجي التقويمي الحالي ونظيره النجمي الحقيقي نسبةً لموضع
+ * النجوم الثابتة فعليا) - هذا أساس التمييز الذي طلبه المستخدم بين "البرج التقديري" (التقويمي،
+ * من نقطة الاعتدال المتحركة - zodiacSignInfo/manzilInfo أعلاه حين تُستدعيان بالطول البروجي كما
+ * هو) و"البرج التحقيقي" (النجمي، من موضع الشمس/القمر الفعلي وسط الأبراج الحقيقية - تُستدعيان
+ * بالطول البروجي بعد طرح ayanamsaDeg منه). السبب الفلكي: تقدُّم الاعتدالين (precession) يُزحزح
+ * نقطة الاعتدال الربيعي عن النجوم الثابتة بنحو ١° كل ٧٢ سنة تقريبا - تأكَّد هذا المعدل من
+ * مصدرين مستقلّين تماما: جمعية الفلك بالقطيف (qasweb.org/articles/433) بصيغة "درجة كل ٧٢
+ * سنة"، ومعدل أيانامسا "Lahiri" الهندي التقليدي "٥٠ ثانية قوسية سنويا" - وهما متطابقان حسابيا
+ * (٥٠×٧٢=٣٦٠٠ ثانية = ١°)، فاعتُمد Lahiri قيمةً مرجعية هنا إذ لم يُعثر (بعد بحث لم يكفِ) على
+ * اصطلاح عربي/فلكي-شرعي مقنَّن مستقل لنقطة الصفر النجمية.
+ *
+ * القيمة المرجعية: ٢٤°١٣′١٩″ في ٢٠٢٦/١/١ (المصدر: jagannathhora.com/lahiri-ayanamsa-value)
+ * بمعدل +٥٠ ثانية قوسية/سنة. هذا تقدير بحثي بانتظار تأكيد المستخدم بقراءة مرجعه الخاص ("الهادي
+ * الناطق") في لحظة محدَّدة، إذ قد يستعمل نقطة صفر نجمية مختلفة قليلا عن Lahiri - يسهل تعديل
+ * الثابتين أدناه فور توفر قراءة مرجعية دقيقة، بلا أي تغيير آخر في بقية الكود.
+ * @param {Date} utcDate
+ * @returns {number} الأيانامسا بالدرجات عند هذه اللحظة
+ */
+const AYANAMSA_REF_UTC_MS = Date.UTC(2026, 0, 1, 0, 0, 0)
+const AYANAMSA_REF_DEG = 24 + 13 / 60 + 19 / 3600
+const AYANAMSA_RATE_DEG_PER_YEAR = 50 / 3600
+
+export function ayanamsaDeg (utcDate) {
+  const yearsSinceRef = (utcDate.getTime() - AYANAMSA_REF_UTC_MS) / (365.25 * 24 * 3600 * 1000)
+  return AYANAMSA_REF_DEG + AYANAMSA_RATE_DEG_PER_YEAR * yearsSinceRef
+}
+
 export default {
   ZODIAC_SIGNS_AR, ZODIAC_SIGNS_FR, MANAZIL_AR, MANAZIL_FR,
-  zodiacSignInfo, manzilInfo, zodiacSignName, manzilName
+  zodiacSignInfo, manzilInfo, zodiacSignName, manzilName, ayanamsaDeg
 }
