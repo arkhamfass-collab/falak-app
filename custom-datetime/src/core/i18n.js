@@ -27,6 +27,7 @@ export const STRINGS = {
     'tabs.sun': 'الشمس',
     'tabs.moon': 'القمر',
     'tabs.sidereal': 'الوقت النجمي',
+    'tabs.qibla': 'القبلة',
 
     'prayer.panelTitle': 'مواقيت الصلاة',
     'prayer.fajr': 'الفجر',
@@ -42,6 +43,14 @@ export const STRINGS = {
     'prayer.asrOptionJumhur': 'الجمهور (الشافعية/المالكية/الحنابلة)',
     'prayer.asrOptionHanafi': 'الحنفية',
 
+    'prayer.extraGroupTitle': 'أوقات شرعية إضافية',
+    'prayer.lastThirdLabel': 'بداية الثلث الأخير من الليل',
+    'prayer.isfarAlaLabel': 'الإسفار الأعلى',
+    'prayer.naflLabel': 'وقت حل النافلة',
+    'prayer.asrMukhtarEndLabel': 'نهاية الوقت المختار للعصر',
+    'prayer.extraNotTodayFallback': 'لم يقع اليوم عند موقعكم',
+    'prayer.extraHint': 'الليلة الشرعية: من الغروب إلى طلوع الفجر. الإسفار الأعلى: ارتفاع الشمس ‑٦°. حل النافلة: ارتفاعها +٤° ("قيد رمح"). نهاية المختار للعصر: الظل = ظل الزوال + ضِعف طول العود. يمكن تعديل زاويتي الإسفار والنافلة من الإعدادات ⚙.',
+
     'common.eclLon': 'الطول البروجي',
     'common.distFromEarth': 'البعد عن الأرض',
     'common.eqGroupTitle': 'الإحداثيات الاستوائية',
@@ -54,6 +63,11 @@ export const STRINGS = {
     'common.rise': 'الشروق',
     'common.set': 'الغروب',
     'common.transit': 'الزوال',
+    'common.zodiacGroupTitle': 'البرج والمنزلة',
+    'common.zodiacSignLabel': 'البرج',
+    'common.degreeInSignLabel': 'الدرجة في البرج',
+    'common.manzilLabel': 'المنزلة',
+    'common.degreeInManzilLabel': 'الدرجة في المنزلة',
 
     'sun.panelTitle': 'بيانات الشمس',
     'sun.eclGroupTitle': 'الإحداثيات البروجية (السماوية)',
@@ -91,6 +105,15 @@ export const STRINGS = {
     'sidereal.lstLabel': 'LST — الوقت النجمي المحلي',
     'sidereal.hint': 'GST0 يُحسب عند منتصف الليل بالتوقيت العالمي لليوم الحالي، وGST هو امتداده الدائر مع الزمن الآن بغرينتش، وLST هو GST مضافا إليه خط طول موقعكم شرقا (بالساعات).',
 
+    'qibla.panelTitle': 'اتجاه القبلة',
+    'qibla.azimuthGroupTitle': 'سمت القبلة من موقعكم',
+    'qibla.azimuthLabel': 'سمت القبلة',
+    'qibla.alignmentGroupTitle': 'محاذاة الشمس أو الظل للقبلة اليوم',
+    'qibla.sunTowardLabel': 'وقت اتجاه الشمس نحو القبلة',
+    'qibla.shadowTowardLabel': 'وقت اتجاه الظل نحو القبلة',
+    'qibla.notTodayFallback': 'لا يحدث اليوم عند موقعكم',
+    'qibla.hint': 'سمت القبلة محسوب بالصيغة الكروية الدقيقة (دائرة عظمى)، لا بخط مستقيم على خريطة مسطَّحة. محاذاة الظل تعني أن ظل أي عمود عمودي يشير تماما نحو القبلة في تلك اللحظة؛ ومحاذاة الشمس تعني أنها هي نفسها في اتجاه القبلة تماما. قد لا تقع إحداهما أو كلتاهما في بعض الأيام بحسب خط العرض والفصل.',
+
     'footer.speakNow': '🔊 قراءة الآن',
     'footer.autoRead': 'القراءة الآلية كل نصف ساعة',
 
@@ -124,6 +147,8 @@ export const STRINGS = {
     'settings.ishaModeAngle': 'العشاء بزاوية فلكية',
     'settings.ishaOffsetLabel': 'عدد الدقائق بعد المغرب',
     'settings.ishaAngleLabel': 'زاوية العشاء (تحت الأفق)',
+    'settings.isfarAngleLabel': 'زاوية الإسفار الأعلى (تحت الأفق)',
+    'settings.naflAltitudeLabel': 'ارتفاع حل النافلة ("قيد رمح")',
     'settings.voiceHeading': 'القارئ الصوتي',
     'settings.voiceSelectLabel': 'صوت القراءة',
     'settings.voiceAutoOption': 'تلقائي (أول صوت عربي يوفّره الجهاز)',
@@ -169,6 +194,7 @@ export const STRINGS = {
     'tabs.sun': 'Soleil',
     'tabs.moon': 'Lune',
     'tabs.sidereal': 'Temps sidéral',
+    'tabs.qibla': 'Qibla',
 
     'prayer.panelTitle': 'Horaires de prière',
     'prayer.fajr': 'Fajr',
@@ -184,6 +210,14 @@ export const STRINGS = {
     'prayer.asrOptionJumhur': 'Jumhur (chaféite/malikite/hanbalite)',
     'prayer.asrOptionHanafi': 'Hanafite',
 
+    'prayer.extraGroupTitle': 'Horaires chariatiques supplémentaires',
+    'prayer.lastThirdLabel': 'Début du dernier tiers de la nuit',
+    'prayer.isfarAlaLabel': "Isfar (clarté avancée avant l'aube)",
+    'prayer.naflLabel': 'Heure de licéité de la prière surérogatoire',
+    'prayer.asrMukhtarEndLabel': "Fin du temps préféré de l'Asr",
+    'prayer.extraNotTodayFallback': "Ne survient pas aujourd'hui à votre position",
+    'prayer.extraHint': "Nuit chariatique : du coucher du soleil au lever du Fajr. Isfar : hauteur du Soleil -6°. Licéité de la Nafl : hauteur +4° (\"qid rumh\"). Fin du temps préféré de l'Asr : ombre = ombre au méridien + deux fois la hauteur du gnomon. Les angles de l'Isfar et de la Nafl se modifient depuis les réglages ⚙.",
+
     'common.eclLon': 'Longitude écliptique',
     'common.distFromEarth': 'Distance à la Terre',
     'common.eqGroupTitle': 'Coordonnées équatoriales',
@@ -196,6 +230,11 @@ export const STRINGS = {
     'common.rise': 'Lever',
     'common.set': 'Coucher',
     'common.transit': 'Passage au méridien',
+    'common.zodiacGroupTitle': 'Signe du zodiaque et demeure lunaire',
+    'common.zodiacSignLabel': 'Signe du zodiaque',
+    'common.degreeInSignLabel': 'Degré dans le signe',
+    'common.manzilLabel': 'Demeure lunaire (manzil)',
+    'common.degreeInManzilLabel': 'Degré dans la demeure',
 
     'sun.panelTitle': 'Données du Soleil',
     'sun.eclGroupTitle': 'Coordonnées écliptiques (célestes)',
@@ -233,6 +272,15 @@ export const STRINGS = {
     'sidereal.lstLabel': 'LST — Temps sidéral local',
     'sidereal.hint': "GST0 est calculé à minuit temps universel du jour courant ; GST en est le prolongement continu avec le temps à Greenwich ; LST est GST additionné de la longitude est de votre position (en heures).",
 
+    'qibla.panelTitle': 'Direction de la Qibla',
+    'qibla.azimuthGroupTitle': 'Azimut de la Qibla depuis votre position',
+    'qibla.azimuthLabel': 'Azimut de la Qibla',
+    'qibla.alignmentGroupTitle': "Alignement du Soleil ou de l'ombre avec la Qibla aujourd'hui",
+    'qibla.sunTowardLabel': 'Heure où le Soleil fait face à la Qibla',
+    'qibla.shadowTowardLabel': "Heure où l'ombre indique la Qibla",
+    'qibla.notTodayFallback': "Ne se produit pas aujourd'hui à votre position",
+    'qibla.hint': "L'azimut de la Qibla est calculé par la formule sphérique exacte (grand cercle), et non par une ligne droite sur une carte plane. L'alignement de l'ombre signifie que l'ombre de tout objet vertical pointe exactement vers la Qibla à cet instant ; l'alignement du Soleil signifie que le Soleil lui-même se trouve exactement dans la direction de la Qibla. L'un ou l'autre - ou les deux - peut ne pas se produire certains jours, selon la latitude et la saison.",
+
     'footer.speakNow': '🔊 Lire maintenant',
     'footer.autoRead': 'Lecture automatique toutes les demi-heures',
 
@@ -266,6 +314,8 @@ export const STRINGS = {
     'settings.ishaModeAngle': 'Isha selon un angle astronomique',
     'settings.ishaOffsetLabel': 'Nombre de minutes après le Maghrib',
     'settings.ishaAngleLabel': "Angle de l'Isha (sous l'horizon)",
+    'settings.isfarAngleLabel': "Angle de l'Isfar supérieur (sous l'horizon)",
+    'settings.naflAltitudeLabel': 'Hauteur de licéité de la Nafl ("qid rumh")',
     'settings.voiceHeading': 'Lecture vocale',
     'settings.voiceSelectLabel': 'Voix de lecture',
     'settings.voiceAutoOption': 'Automatique (première voix française disponible)',

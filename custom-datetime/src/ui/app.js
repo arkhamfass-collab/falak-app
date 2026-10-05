@@ -31,6 +31,8 @@ const DEFAULT_STATE = {
   ishaMode: 'offsetAfterMaghrib', // 'offsetAfterMaghrib' | 'angle'
   ishaOffsetMinutes: 90,
   ishaAngleDeg: -18,
+  isfarAlaAngleDeg: -6,
+  naflAltitudeDeg: 4,
   autoReadEnabled: true,
   voiceName: null, // null = تلقائي (أول صوت بلغة الواجهة الحالية يجده المتصفح) - أو اسم صوت محدد اختاره المستخدم
   speechRate: 0.95,
@@ -87,7 +89,9 @@ function currentPrayerSettings () {
     asrFactor: Number(state.asrFactor),
     ishaMode: state.ishaMode,
     ishaOffsetMinutes: Number(state.ishaOffsetMinutes),
-    ishaAngleDeg: Number(state.ishaAngleDeg)
+    ishaAngleDeg: Number(state.ishaAngleDeg),
+    isfarAlaAngleDeg: Number(state.isfarAlaAngleDeg),
+    naflAltitudeDeg: Number(state.naflAltitudeDeg)
   }
 }
 
@@ -304,9 +308,11 @@ function fillSettingsFormFromState () {
   document.querySelector(`input[name="ishaMode"][value="${state.ishaMode}"]`).checked = true
   document.getElementById('inIshaOffset').value = state.ishaOffsetMinutes
   document.getElementById('inIshaAngle').value = state.ishaAngleDeg
+  document.getElementById('inIsfarAngle').value = state.isfarAlaAngleDeg
+  document.getElementById('inNaflAltitude').value = state.naflAltitudeDeg
   document.getElementById('inVoice').value = state.voiceName || ''
   document.getElementById('inRate').value = state.speechRate
-  ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle'].forEach(syncSignButton)
+  ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle', 'inIsfarAngle'].forEach(syncSignButton)
   updateSettingsVisibility()
   if (document.getElementById('inTz').value !== state.timeZone) {
     const sel = document.getElementById('inTz')
@@ -364,6 +370,8 @@ function saveSettingsFromForm () {
   state.ishaMode = document.querySelector('input[name="ishaMode"]:checked').value
   state.ishaOffsetMinutes = numOr(document.getElementById('inIshaOffset').value, state.ishaOffsetMinutes)
   state.ishaAngleDeg = numOr(document.getElementById('inIshaAngle').value, state.ishaAngleDeg)
+  state.isfarAlaAngleDeg = numOr(document.getElementById('inIsfarAngle').value, state.isfarAlaAngleDeg)
+  state.naflAltitudeDeg = numOr(document.getElementById('inNaflAltitude').value, state.naflAltitudeDeg)
   state.voiceName = document.getElementById('inVoice').value || null
   state.speechRate = numOr(document.getElementById('inRate').value, state.speechRate)
   saveState()
@@ -587,7 +595,7 @@ function wireEvents () {
   })
 
   document.getElementById('btnDetectLocation').addEventListener('click', detectLocation)
-  ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle'].forEach((id) => {
+  ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle', 'inIsfarAngle'].forEach((id) => {
     wireSignedDecimalInput(id)
     wireSignToggle(id)
   })

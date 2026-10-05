@@ -17,6 +17,8 @@ import prayerModule from './prayerTimes.js'
 import hijriModule from './hijri.js'
 import timeutilModule from './timeutil.js'
 import formatModule from './format.js'
+import qiblaModule from './qibla.js'
+import zodiacModule from './zodiac.js'
 
 const R2D = 180 / Math.PI
 
@@ -77,8 +79,15 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   // سمت الظل الآن (نظير سمت الشمس): معنى فقط حين يوجد ظل فعلا (الشمس فوق الأفق)
   const shadowAzimuthNowDeg = shadowNowCm != null ? sunModule.shadowAzimuthDeg(sunHz.azimuthDeg) : null
 
+  // البرج والمنزلة: تصنيفان للطول البروجي نفسه (sunEcl.lon) لا حسابان مستقلان - انظر zodiac.js.
+  // الاسمان بكلتا اللغتين يُحسبان هنا (كـmoonPhase.phaseNameArabic/French) لا في طبقة العرض،
+  // فالاسم بيانات مشتقة من الفهرس المحسوب لا نص واجهة ثابت.
+  const sunLonDeg = sunEcl.lon * R2D
+  const sunZodiac = zodiacModule.zodiacSignInfo(sunLonDeg)
+  const sunManzil = zodiacModule.manzilInfo(sunLonDeg)
+
   const sun = {
-    ecliptic: { longitudeDeg: sunEcl.lon * R2D, distanceAU: sunEcl.range },
+    ecliptic: { longitudeDeg: sunLonDeg, distanceAU: sunEcl.range },
     equatorial: { rightAscensionDeg: sunEq.ra * R2D, declinationDeg: sunEq.dec * R2D, distanceAU: sunEq.range },
     horizontal: sunHz,
     riseTransitSet: sunRTS,
@@ -87,7 +96,19 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     shadowNowCm,
     shadowAzimuthNowDeg,
     dayLengthHours: sunRTS.dayLengthHours,
-    nightLengthHours: sunRTS.nightLengthHours
+    nightLengthHours: sunRTS.nightLengthHours,
+    zodiac: {
+      index: sunZodiac.signIndex,
+      degreeInSign: sunZodiac.degreeInSign,
+      nameArabic: zodiacModule.zodiacSignName(sunZodiac.signIndex, 'ar'),
+      nameFrench: zodiacModule.zodiacSignName(sunZodiac.signIndex, 'fr')
+    },
+    manzil: {
+      index: sunManzil.manzilIndex,
+      degreeInManzil: sunManzil.degreeInManzil,
+      nameArabic: zodiacModule.manzilName(sunManzil.manzilIndex, 'ar'),
+      nameFrench: zodiacModule.manzilName(sunManzil.manzilIndex, 'fr')
+    }
   }
 
   // ---------------- القمر ----------------
@@ -101,8 +122,12 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const moonPhase = moonModule.moonPhaseInfo(jde, sunEq, moonData.eq, moonData.range)
   const nextNewMoonLocal = timeutilModule.localPartsFromUTC(moonPhase.nextNewMoonUTCDate, observerTime)
 
+  const moonLonDeg = moonData.ecl.lon * R2D
+  const moonZodiac = zodiacModule.zodiacSignInfo(moonLonDeg)
+  const moonManzil = zodiacModule.manzilInfo(moonLonDeg)
+
   const moon = {
-    ecliptic: { longitudeDeg: moonData.ecl.lon * R2D, latitudeDeg: moonData.ecl.lat * R2D, distanceKm: moonData.range },
+    ecliptic: { longitudeDeg: moonLonDeg, latitudeDeg: moonData.ecl.lat * R2D, distanceKm: moonData.range },
     equatorial: { rightAscensionDeg: moonData.eq.ra * R2D, declinationDeg: moonData.eq.dec * R2D },
     horizontal: moonHz,
     riseTransitSet: moonRTS,
@@ -112,7 +137,19 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     phaseNameArabic: moonPhase.phaseNameArabic,
     phaseNameFrench: moonPhase.phaseNameFrench,
     distanceKm: moonData.range,
-    nextNewMoon: { utcDate: moonPhase.nextNewMoonUTCDate, local: nextNewMoonLocal }
+    nextNewMoon: { utcDate: moonPhase.nextNewMoonUTCDate, local: nextNewMoonLocal },
+    zodiac: {
+      index: moonZodiac.signIndex,
+      degreeInSign: moonZodiac.degreeInSign,
+      nameArabic: zodiacModule.zodiacSignName(moonZodiac.signIndex, 'ar'),
+      nameFrench: zodiacModule.zodiacSignName(moonZodiac.signIndex, 'fr')
+    },
+    manzil: {
+      index: moonManzil.manzilIndex,
+      degreeInManzil: moonManzil.degreeInManzil,
+      nameArabic: zodiacModule.manzilName(moonManzil.manzilIndex, 'ar'),
+      nameFrench: zodiacModule.manzilName(moonManzil.manzilIndex, 'fr')
+    }
   }
 
   // ---------------- الوقت النجمي ----------------
@@ -123,7 +160,18 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     localParts.year, localParts.month, localParts.day, observerTime, latDeg, lonEastDeg, prayerSettings
   )
 
-  return { time, sun, moon, sidereal, prayerTimes, location }
+  // ---------------- القبلة ----------------
+  // سمت القبلة: دالة في الموقع فقط (لا في الزمن)، فيُحسب مرة واحدة هنا؛ لحظتا محاذاة الشمس/الظل
+  // لهذا السمت تُحسبان بين شروق الشمس وغروبها الفعليين (sunRTS أعلاه) - انظر qibla.js.
+  const qiblaAzimuthDeg = qiblaModule.qiblaAzimuthDeg(latDeg, lonEastDeg)
+  const qiblaAlignment = qiblaModule.qiblaAlignmentTimes(sunRTS.riseDate, sunRTS.setDate, latDeg, lonEastDeg, qiblaAzimuthDeg)
+  const qibla = {
+    azimuthDeg: qiblaAzimuthDeg,
+    sunTowardQiblaDate: qiblaAlignment.sunTowardQiblaDate,
+    shadowTowardQiblaDate: qiblaAlignment.shadowTowardQiblaDate
+  }
+
+  return { time, sun, moon, sidereal, prayerTimes, qibla, location }
 }
 
 export default { computeAll, DEFAULT_LOCATION }

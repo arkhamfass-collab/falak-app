@@ -11,9 +11,10 @@
 // (custom-datetime/) لكن Cache Storage، كـlocalStorage، مرتبط بالأصل (origin) لا بمسار
 // عامل الخدمة - فلو تشارك الاسم مع النسخة الأولى لأصبح الكاش حرفيا كائنا واحدا مشتركا بين
 // النسختين (انظر نفس الملاحظة بخصوص STORAGE_KEY في src/ui/app.js).
-// رُفع رقم الإصدار (v2→v3) مع إضافة سمت الظل إلى نص القراءة الصوتية (reader.js)، لضمان حصول
-// من ثبّت هذه النسخة فعلا على غلاف مُحدَّث نظيف.
-const CACHE_NAME = 'falak-app-custom-datetime-shell-v3'
+// رُفع رقم الإصدار (v3→v4) مع إضافة تبويب القبلة، والبرج/المنزلة للشمس والقمر، وأربعة أوقات
+// شرعية إضافية (الثلث الأخير، الإسفار الأعلى، حل النافلة، نهاية المختار للعصر)، لضمان حصول
+// من ثبّت هذه النسخة فعلا على غلاف مُحدَّث نظيف بدل الاستمرار في تصفّح نسخة قديمة بلا هذه الإضافات.
+const CACHE_NAME = 'falak-app-custom-datetime-shell-v4'
 
 const CORE_ASSETS = [
   './',
@@ -28,11 +29,13 @@ const CORE_ASSETS = [
   'src/core/hijri.js',
   'src/core/moon.js',
   'src/core/prayerTimes.js',
+  'src/core/qibla.js',
   'src/core/reader.js',
   'src/core/riseSetUtil.js',
   'src/core/siderealTimes.js',
   'src/core/sun.js',
   'src/core/timeutil.js',
+  'src/core/zodiac.js',
   'public/icon.svg'
 ]
 

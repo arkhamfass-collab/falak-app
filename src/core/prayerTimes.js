@@ -27,7 +27,9 @@ export const DEFAULT_PRAYER_SETTINGS = {
   ishaMode: 'offsetAfterMaghrib', // 'offsetAfterMaghrib' | 'angle'
   ishaOffsetMinutes: 90, // اختيار المستخدم: عشاء = مغرب + 90 دقيقة
   ishaAngleDeg: -18, // تُستعمل فقط إذا ishaMode === 'angle' (مرونة لتبديل الطريقة مستقبلا)
-  ihtiyatMinutes: 0 // هامش احتياط اختياري (دقائق)؛ 0 الآن = حساب فلكي خالص بلا هامش
+  ihtiyatMinutes: 0, // هامش احتياط اختياري (دقائق)؛ 0 الآن = حساب فلكي خالص بلا هامش
+  isfarAlaAngleDeg: -6, // ارتفاع الإسفار الأعلى (اختيار المستخدم صريحا)
+  naflAltitudeDeg: 4 // ارتفاع "قيد رمح" لحل النافلة (اختيار المستخدم صريحا، مطابقة لبرنامجهم "الهادي الناطق")
 }
 
 export const PRAYER_NAMES_AR = {
@@ -90,6 +92,46 @@ export function computePrayerTimes (localYear, localMonth1to12, localDay, observ
     ishaStatus = 'ok'
   }
 
+  // ---------------- أوقات شرعية إضافية (طلب المستخدم) ----------------
+
+  // ١) بداية الثلث الأخير من الليل: الليلة الشرعية من الغروب إلى طلوع فجر اليوم التالي (لا
+  // منتصف الليل الساعاتي) - فنحتاج فجر "اليوم التالي" تحديدا، بنفس زاوية fajrAngleDeg الحالية.
+  let lastThirdOfNightStart = null
+  let lastThirdOfNightStatus = (main.status === 'ok') ? 'pending' : main.status
+  if (maghribDate) {
+    const tomorrowFajrCrossing = sun.sunAngleCrossing(
+      localYear, localMonth1to12, localDay + 1, observerTime, latDeg, lonEastDeg, s.fajrAngleDeg
+    )
+    if (tomorrowFajrCrossing.riseDate) {
+      const nightMs = tomorrowFajrCrossing.riseDate.getTime() - maghribDate.getTime()
+      lastThirdOfNightStart = new Date(maghribDate.getTime() + (nightMs * 2) / 3)
+      lastThirdOfNightStatus = 'ok'
+    } else {
+      lastThirdOfNightStatus = tomorrowFajrCrossing.status
+    }
+  }
+
+  // ٢) الإسفار الأعلى: عبور صباحي (كالفجر تماما، زاوية مختلفة فقط) لارتفاع isfarAlaAngleDeg
+  const isfarCrossing = sun.sunAngleCrossing(localYear, localMonth1to12, localDay, observerTime, latDeg, lonEastDeg, s.isfarAlaAngleDeg)
+  const isfarAlaStart = isfarCrossing.riseDate
+
+  // ٣) وقت حل النافلة: عبور صباحي لارتفاع naflAltitudeDeg ("قيد رمح")
+  const naflCrossing = sun.sunAngleCrossing(localYear, localMonth1to12, localDay, observerTime, latDeg, lonEastDeg, s.naflAltitudeDeg)
+  const naflTime = naflCrossing.riseDate
+
+  // ٤) نهاية الوقت المختار للعصر: نفس صيغة العصر أعلاه تماما (h_asr = atan(1/(factor+tan(|lat-dec|))))
+  // بعامل = ٢ ثابت دائما هنا (مستقل عن asrFactor المُختار للعصر نفسه أعلاه)، إذ طلب المستخدم
+  // صريحا "ضِعف طول صاحبه" - أي: ظل = ظل الزوال + ٢×طول العود.
+  let asrMukhtarEnd = null
+  let asrMukhtarEndStatus = main.status
+  if (main.status === 'ok') {
+    const absLatDecDeg = 90 - main.transitAltitudeDeg
+    const hAsrMukhtarEndDeg = Math.atan(1 / (2 + Math.tan(absLatDecDeg * D2R))) * R2D
+    const asrMukhtarEndCrossing = sun.sunAngleCrossing(localYear, localMonth1to12, localDay, observerTime, latDeg, lonEastDeg, hAsrMukhtarEndDeg)
+    asrMukhtarEnd = asrMukhtarEndCrossing.setDate
+    asrMukhtarEndStatus = asrMukhtarEndCrossing.status
+  }
+
   return {
     fajr: fajrCrossing.riseDate ? new Date(fajrCrossing.riseDate.getTime() - ihtiyatMs) : null,
     sunrise: main.riseDate,
@@ -97,11 +139,19 @@ export function computePrayerTimes (localYear, localMonth1to12, localDay, observ
     asr: asrDate,
     maghrib: maghribDate,
     isha: ishaDate,
+    lastThirdOfNightStart,
+    isfarAlaStart,
+    naflTime,
+    asrMukhtarEnd,
     status: {
       fajr: fajrCrossing.status,
       sunMain: main.status,
       asr: asrStatus,
-      isha: ishaStatus
+      isha: ishaStatus,
+      lastThirdOfNight: lastThirdOfNightStatus,
+      isfarAla: isfarCrossing.status,
+      nafl: naflCrossing.status,
+      asrMukhtarEnd: asrMukhtarEndStatus
     }
   }
 }

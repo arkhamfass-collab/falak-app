@@ -37,6 +37,7 @@
   <button class="tab-btn" data-tab="tab-sun" role="tab" aria-selected="false" data-i18n="tabs.sun">الشمس</button>
   <button class="tab-btn" data-tab="tab-moon" role="tab" aria-selected="false" data-i18n="tabs.moon">القمر</button>
   <button class="tab-btn" data-tab="tab-sidereal" role="tab" aria-selected="false" data-i18n="tabs.sidereal">الوقت النجمي</button>
+  <button class="tab-btn" data-tab="tab-qibla" role="tab" aria-selected="false" data-i18n="tabs.qibla">القبلة</button>
 </nav>
 
 <main>
@@ -52,6 +53,15 @@
       <div class="prayer-card" data-k="isha"><span class="pname" data-i18n="prayer.isha">العشاء</span><span class="ptime">—</span></div>
     </div>
     <p class="hint" id="prayerHintText">—</p>
+
+    <div class="data-group">
+      <h3 data-i18n="prayer.extraGroupTitle">أوقات شرعية إضافية</h3>
+      <div class="kv"><span data-i18n="prayer.lastThirdLabel">بداية الثلث الأخير من الليل</span><b data-f="prayer.extra.lastThird">—</b></div>
+      <div class="kv"><span data-i18n="prayer.isfarAlaLabel">الإسفار الأعلى</span><b data-f="prayer.extra.isfarAla">—</b></div>
+      <div class="kv"><span data-i18n="prayer.naflLabel">وقت حل النافلة</span><b data-f="prayer.extra.nafl">—</b></div>
+      <div class="kv"><span data-i18n="prayer.asrMukhtarEndLabel">نهاية الوقت المختار للعصر</span><b data-f="prayer.extra.asrMukhtarEnd">—</b></div>
+    </div>
+    <p class="hint" data-i18n="prayer.extraHint">الليلة الشرعية: من الغروب إلى طلوع الفجر. الإسفار الأعلى: ارتفاع الشمس ‑٦°. حل النافلة: ارتفاعها +٤° ("قيد رمح"). نهاية المختار للعصر: الظل = ظل الزوال + ضِعف طول العود. يمكن تعديل زاويتي الإسفار والنافلة من الإعدادات ⚙.</p>
   </section>
 
   <section id="tab-sun" class="tab-panel">
@@ -61,6 +71,14 @@
       <h3 data-i18n="sun.eclGroupTitle">الإحداثيات البروجية (السماوية)</h3>
       <div class="kv"><span data-i18n="common.eclLon">الطول البروجي</span><b data-f="sun.ecl.lon">—</b></div>
       <div class="kv"><span data-i18n="common.distFromEarth">البعد عن الأرض</span><b data-f="sun.ecl.dist">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="common.zodiacGroupTitle">البرج والمنزلة</h3>
+      <div class="kv"><span data-i18n="common.zodiacSignLabel">البرج</span><b data-f="sun.zodiacSign">—</b></div>
+      <div class="kv"><span data-i18n="common.degreeInSignLabel">الدرجة في البرج</span><b data-f="sun.zodiacDeg">—</b></div>
+      <div class="kv"><span data-i18n="common.manzilLabel">المنزلة</span><b data-f="sun.manzil">—</b></div>
+      <div class="kv"><span data-i18n="common.degreeInManzilLabel">الدرجة في المنزلة</span><b data-f="sun.manzilDeg">—</b></div>
     </div>
 
     <div class="data-group">
@@ -107,6 +125,14 @@
     </div>
 
     <div class="data-group">
+      <h3 data-i18n="common.zodiacGroupTitle">البرج والمنزلة</h3>
+      <div class="kv"><span data-i18n="common.zodiacSignLabel">البرج</span><b data-f="moon.zodiacSign">—</b></div>
+      <div class="kv"><span data-i18n="common.degreeInSignLabel">الدرجة في البرج</span><b data-f="moon.zodiacDeg">—</b></div>
+      <div class="kv"><span data-i18n="common.manzilLabel">المنزلة</span><b data-f="moon.manzil">—</b></div>
+      <div class="kv"><span data-i18n="common.degreeInManzilLabel">الدرجة في المنزلة</span><b data-f="moon.manzilDeg">—</b></div>
+    </div>
+
+    <div class="data-group">
       <h3 data-i18n="common.eqGroupTitle">الإحداثيات الاستوائية</h3>
       <div class="kv"><span data-i18n="common.ra">المطلع المستقيم</span><b data-f="moon.eq.ra">—</b></div>
       <div class="kv"><span data-i18n="common.dec">الميل</span><b data-f="moon.eq.dec">—</b></div>
@@ -150,6 +176,22 @@
       <div class="kv"><span data-i18n="sidereal.lstLabel">LST — الوقت النجمي المحلي</span><b data-f="sid.lst">—</b></div>
     </div>
     <p class="hint" data-i18n="sidereal.hint">GST0 يُحسب عند منتصف الليل بالتوقيت العالمي لليوم الحالي، وGST هو امتداده الدائر مع الزمن الآن بغرينتش، وLST هو GST مضافا إليه خط طول موقعكم شرقا (بالساعات).</p>
+  </section>
+
+  <section id="tab-qibla" class="tab-panel">
+    <h2 class="panel-title" data-i18n="qibla.panelTitle">اتجاه القبلة</h2>
+
+    <div class="data-group">
+      <h3 data-i18n="qibla.azimuthGroupTitle">سمت القبلة من موقعكم</h3>
+      <div class="kv"><span data-i18n="qibla.azimuthLabel">سمت القبلة</span><b data-f="qibla.azimuth">—</b></div>
+    </div>
+
+    <div class="data-group">
+      <h3 data-i18n="qibla.alignmentGroupTitle">محاذاة الشمس أو الظل للقبلة اليوم</h3>
+      <div class="kv"><span data-i18n="qibla.sunTowardLabel">وقت اتجاه الشمس نحو القبلة</span><b data-f="qibla.sunToward">—</b></div>
+      <div class="kv"><span data-i18n="qibla.shadowTowardLabel">وقت اتجاه الظل نحو القبلة</span><b data-f="qibla.shadowToward">—</b></div>
+    </div>
+    <p class="hint" data-i18n="qibla.hint">سمت القبلة محسوب بالصيغة الكروية الدقيقة (دائرة عظمى)، لا بخط مستقيم على خريطة مسطَّحة. محاذاة الظل تعني أن ظل أي عمود عمودي يشير تماما نحو القبلة في تلك اللحظة؛ ومحاذاة الشمس تعني أنها هي نفسها في اتجاه القبلة تماما. قد لا تقع إحداهما أو كلتاهما في بعض الأيام بحسب خط العرض والفصل.</p>
   </section>
 
 </main>
@@ -257,6 +299,17 @@
         <button type="button" class="sign-toggle" data-for="inIshaAngle" aria-label="تبديل موجب/سالب">−</button>
         <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inIshaAngle" value="-18">
       </div>
+    </div>
+    <div class="field-row">
+      <label data-i18n="settings.isfarAngleLabel">زاوية الإسفار الأعلى (تحت الأفق)</label>
+      <div class="signed-input-row">
+        <button type="button" class="sign-toggle" data-for="inIsfarAngle" aria-label="تبديل موجب/سالب">−</button>
+        <input type="text" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*" class="signed-decimal" id="inIsfarAngle" value="-6">
+      </div>
+    </div>
+    <div class="field-row">
+      <label data-i18n="settings.naflAltitudeLabel">ارتفاع حل النافلة ("قيد رمح")</label>
+      <input type="number" id="inNaflAltitude" step="0.5" value="4">
     </div>
 
     <h3 data-i18n="settings.voiceHeading">القارئ الصوتي</h3>

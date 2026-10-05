@@ -33,6 +33,13 @@ function fmtDateAndClock (date, localPartsFn) {
   return `${p.year}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}`
 }
 
+/** كـfmtClockOrDash، لكن يُرجع نص رسالة (مثلا "لم يقع اليوم عند موقعكم") بدل شَرطة عند غياب القيمة -
+ * تُستعمل للأوقات التي قد لا تقع فعلا في بعض الأيام (أوقات القبلة/الأوقات الشرعية الإضافية) حيث
+ * الشرطة المجردة لا تُفسَّر بسهولة، بخلاف غياب عابر لحظي كأوقات الصلاة الاعتيادية. */
+function fmtClockOrMsg (date, localPartsFn, fallbackMsg) {
+  return date ? fmtClockOrDash(date, localPartsFn) : fallbackMsg
+}
+
 const UTC_PARTS_FN = (d) => ({
   year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(),
   hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds()
@@ -100,6 +107,10 @@ export function renderSun (root, r, localPartsFn, lang = 'ar') {
     { rtl: s.shadowAzimuthNowDeg == null && isAr })
   setByDataF(root, 'sun.dayLen', format.formatHMS(s.dayLengthHours, { showSeconds: false }))
   setByDataF(root, 'sun.nightLen', format.formatHMS(s.nightLengthHours, { showSeconds: false }))
+  setByDataF(root, 'sun.zodiacSign', isAr ? s.zodiac.nameArabic : s.zodiac.nameFrench, { rtl: isAr })
+  setByDataF(root, 'sun.zodiacDeg', format.formatDMS(s.zodiac.degreeInSign))
+  setByDataF(root, 'sun.manzil', isAr ? s.manzil.nameArabic : s.manzil.nameFrench, { rtl: isAr })
+  setByDataF(root, 'sun.manzilDeg', format.formatDMS(s.manzil.degreeInManzil))
 }
 
 export function renderMoon (root, r, localPartsFn, lang = 'ar') {
@@ -124,12 +135,35 @@ export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   setByDataF(root, 'moon.illum', (m.illuminatedFraction * 100).toFixed(1) + '%')
   setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: isAr })
   setByDataF(root, 'moon.nextNewLocal', fmtDateAndClock(m.nextNewMoon.utcDate, localPartsFn), { rtl: isAr })
+  setByDataF(root, 'moon.zodiacSign', isAr ? m.zodiac.nameArabic : m.zodiac.nameFrench, { rtl: isAr })
+  setByDataF(root, 'moon.zodiacDeg', format.formatDMS(m.zodiac.degreeInSign))
+  setByDataF(root, 'moon.manzil', isAr ? m.manzil.nameArabic : m.manzil.nameFrench, { rtl: isAr })
+  setByDataF(root, 'moon.manzilDeg', format.formatDMS(m.manzil.degreeInManzil))
 }
 
 export function renderSidereal (root, r) {
   setByDataF(root, 'sid.gst0', format.formatHMS(r.sidereal.gst0Hours))
   setByDataF(root, 'sid.gst', format.formatHMS(r.sidereal.gstHours))
   setByDataF(root, 'sid.lst', format.formatHMS(r.sidereal.lstHours))
+}
+
+export function renderPrayerExtras (root, r, localPartsFn, lang = 'ar') {
+  const p = r.prayerTimes
+  const isAr = lang !== 'fr'
+  const fallback = i18n.t('prayer.extraNotTodayFallback', lang)
+  setByDataF(root, 'prayer.extra.lastThird', fmtClockOrMsg(p.lastThirdOfNightStart, localPartsFn, fallback), { rtl: !p.lastThirdOfNightStart && isAr })
+  setByDataF(root, 'prayer.extra.isfarAla', fmtClockOrMsg(p.isfarAlaStart, localPartsFn, fallback), { rtl: !p.isfarAlaStart && isAr })
+  setByDataF(root, 'prayer.extra.nafl', fmtClockOrMsg(p.naflTime, localPartsFn, fallback), { rtl: !p.naflTime && isAr })
+  setByDataF(root, 'prayer.extra.asrMukhtarEnd', fmtClockOrMsg(p.asrMukhtarEnd, localPartsFn, fallback), { rtl: !p.asrMukhtarEnd && isAr })
+}
+
+export function renderQibla (root, r, localPartsFn, lang = 'ar') {
+  const q = r.qibla
+  const isAr = lang !== 'fr'
+  const fallback = i18n.t('qibla.notTodayFallback', lang)
+  setByDataF(root, 'qibla.azimuth', format.formatDMS(q.azimuthDeg))
+  setByDataF(root, 'qibla.sunToward', fmtClockOrMsg(q.sunTowardQiblaDate, localPartsFn, fallback), { rtl: !q.sunTowardQiblaDate && isAr })
+  setByDataF(root, 'qibla.shadowToward', fmtClockOrMsg(q.shadowTowardQiblaDate, localPartsFn, fallback), { rtl: !q.shadowTowardQiblaDate && isAr })
 }
 
 export function renderPrayerHints (root, settings, lang = 'ar') {
@@ -152,9 +186,22 @@ export function applyStaticLanguage (root, lang) {
 export function renderAll (root, r, localPartsFn, lang = 'ar') {
   renderHeader(root, r, lang)
   renderPrayerTimes(root, r, localPartsFn)
+  renderPrayerExtras(root, r, localPartsFn, lang)
   renderSun(root, r, localPartsFn, lang)
   renderMoon(root, r, localPartsFn, lang)
   renderSidereal(root, r)
+  renderQibla(root, r, localPartsFn, lang)
 }
 
-export default { renderHeader, renderPrayerTimes, renderSun, renderMoon, renderSidereal, renderPrayerHints, applyStaticLanguage, renderAll }
+export default {
+  renderHeader,
+  renderPrayerTimes,
+  renderPrayerExtras,
+  renderSun,
+  renderMoon,
+  renderSidereal,
+  renderQibla,
+  renderPrayerHints,
+  applyStaticLanguage,
+  renderAll
+}
