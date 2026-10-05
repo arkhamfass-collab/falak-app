@@ -613,23 +613,69 @@ export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
 
 // ------------------------- النطق عبر Web Speech API (متصفح فقط) -------------------------
 
+// الحد الأقصى الآمن لطول القطعة الواحدة المُرسَلة لمحرك النطق في نداء speak() واحد.
+// السبب: محرك TextToSpeech في أندرويد يفرض حدا صارما على طول النص (TextToSpeech.getMaxSpeechInputLength()،
+// عادة 4000 حرف)؛ تجاوزه يُسقط طلب النطق كليا بلا أي صوت، وفي كثير من إصدارات متصفح أندرويد بلا
+// أي خطأ JS واضح يصل إلى onerror أيضا (مشكلة معروفة وموثقة في Chromium على أندرويد) - بخلاف أغلب
+// محركات سطح المكتب (ويندوز/SAPI مثلا) التي لا تفرض هذا الحد عمليا فتنطق أي طول تقريبا.
+// هذا يفسّر بدقة خللا ظاهره "الفرنسية لا تعمل على أندرويد بينما العربية تعمل، وكلتاهما تعمل على
+// الكمبيوتر": نص القراءة الكامل المبني في reader.js (كل أقسام الواجهة مدمجة في نص واحد) أطول
+// فرنسيا من عربيا للمحتوى نفسه (قياسا: نحو 4500 حرف فرنسيا مقابل نحو 3450 عربيا في حالة نموذجية) -
+// فيقع العربي تحت حد أندرويد (4000) ويتجاوزه الفرنسي، فتبدو المشكلة متعلقة باللغة رغم أنها فعليا
+// متعلقة بطول النص المُرسَل في نداء واحد. الحل: تقسيم النص الطويل لعدة نداءات speak متتالية (أقسام
+// النص، المفصولة أصلا بسطر فارغ، أقصر بكثير من الحد - أطول قسم حاليا نحو 1750 حرفا فرنسيا) بدل
+// نداء واحد بكل النص مدمجا - يعمل أيضا بلا أي تغيير محسوس على سطح المكتب (وقفة قصيرة جدا بين كل
+// قسم والذي يليه، أقرب لوقفة طبيعية بين الجمل منها إلى عطل).
+const MAX_UTTERANCE_CHARS = 2000
+
 /**
- * ينطق نصا عبر Web Speech API إن توفرت (متصفح Chromium على ويندوز، أو متصفح أندرويد) - تعمل
- * بأي لغة يدعمها متصفح الجهاز، عربية كانت أو فرنسية؛ المهم ألا يُخلَط نص لغة بصوت لغة أخرى
- * (نص فرنسي بصوت عربي ينطق حروفا لا معنى لها، والعكس بالعكس) - لذا يُشتق مرشَّح اختيار الصوت
- * الاحتياطي من lang نفسها لا من افتراض ثابت.
- * لا تأثير لها في بيئة بلا `window` (مثل بيئة الاختبار في Node) - تُرجع Promise تُرفض بهدوء.
+ * يقسّم نصا طويلا إلى قطع أقصر لا تتجاوز maxChars، حتى لا تُرفض دفعة واحدة طويلة من محرك نطق
+ * يفرض حدا على طول النص (انظر تعليق MAX_UTTERANCE_CHARS أعلاه). يُفضِّل الفصل على حدود الفقرات
+ * (سطر فارغ - أقسام نص القراءة في هذا الملف مفصولة بها أصلا) لأنها نقاط وقف طبيعية مسموعة؛ فإن
+ * ظلت فقرة واحدة بعد ذلك أطول من الحد (غير متوقع بمحتوى اليوم، احتياط للمستقبل) تُقسَّم إضافيا
+ * على حدود الجمل (نقطة/علامة استفهام/تعجب متبوعة بفراغ، عربية أو فرنسية).
+ * نص قصير أصلا (الحالة الشائعة: جملة اختبار الصوت) يُعاد كما هو بقطعة واحدة بلا أي تغيير.
  * @param {string} text
- * @param {{lang?:string, rate?:number, pitch?:number, voiceNameHint?:string}} [opts]
+ * @param {number} [maxChars]
+ * @returns {string[]}
  */
-export function speak (text, opts = {}) {
-  const { lang = 'ar-SA', rate = 0.95, pitch = 1, voiceNameHint } = opts
+export function splitForSpeech (text, maxChars = MAX_UTTERANCE_CHARS) {
+  if (!text) return []
+  if (text.length <= maxChars) return [text]
+
+  const chunks = []
+  for (const para of text.split(/\n\n+/)) {
+    if (!para.trim()) continue
+    if (para.length <= maxChars) {
+      chunks.push(para)
+      continue
+    }
+    let current = ''
+    for (const sentence of para.split(/(?<=[.!?؟])\s+/)) {
+      const candidate = current ? current + ' ' + sentence : sentence
+      if (candidate.length > maxChars && current) {
+        chunks.push(current)
+        current = sentence
+      } else {
+        current = candidate
+      }
+    }
+    if (current.trim()) chunks.push(current)
+  }
+  return chunks
+}
+
+/**
+ * ينطق قطعة نص واحدة عبر Web Speech API - اللبنة الأساسية التي يبنى عليها speak() أدناه.
+ * المهم ألا يُخلَط نص لغة بصوت لغة أخرى (نص فرنسي بصوت عربي ينطق حروفا لا معنى لها، والعكس
+ * بالعكس) - لذا يُشتق مرشَّح اختيار الصوت الاحتياطي من lang نفسها لا من افتراض ثابت.
+ * @param {string} text
+ * @param {{lang:string, rate:number, pitch:number, voiceNameHint?:string}} opts
+ */
+function speakOneUtterance (text, opts) {
+  const { lang, rate, pitch, voiceNameHint } = opts
   const langPrefix = String(lang).slice(0, 2).toLowerCase()
   return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      reject(new Error('Web Speech API غير متوفرة في هذه البيئة'))
-      return
-    }
     const synth = window.speechSynthesis
     const utter = new window.SpeechSynthesisUtterance(text)
     utter.lang = lang
@@ -654,6 +700,32 @@ export function speak (text, opts = {}) {
     utter.onerror = (e) => reject(e.error || e)
     synth.speak(utter)
   })
+}
+
+/**
+ * ينطق نصا عبر Web Speech API إن توفرت (متصفح Chromium على ويندوز، أو متصفح أندرويد) - تعمل
+ * بأي لغة يدعمها متصفح الجهاز، عربية كانت أو فرنسية. تُقسِّم النص الطويل تلقائيا إلى عدة قطع
+ * (انظر splitForSpeech) تُنطَق الواحدة تلو الأخرى (لا تبدأ قطعة قبل انتهاء التي قبلها) حتى لا
+ * يُرفض نداء النطق كليا على بعض متصفحات أندرويد بسبب طول النص - انظر تعليق MAX_UTTERANCE_CHARS.
+ * فشل أي قطعة يوقف ما تبقى منها فورا وتُرفض الـPromise الكلية بخطأ تلك القطعة.
+ * لا تأثير لها في بيئة بلا `window` (مثل بيئة الاختبار في Node) - تُرجع Promise تُرفض بهدوء.
+ * @param {string} text
+ * @param {{lang?:string, rate?:number, pitch?:number, voiceNameHint?:string}} [opts]
+ */
+export function speak (text, opts = {}) {
+  const { lang = 'ar-SA', rate = 0.95, pitch = 1, voiceNameHint } = opts
+
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return Promise.reject(new Error('Web Speech API غير متوفرة في هذه البيئة'))
+  }
+
+  const chunks = splitForSpeech(text).filter((c) => c && c.trim())
+  if (chunks.length === 0) return Promise.resolve()
+
+  return chunks.reduce(
+    (prevPromise, chunk) => prevPromise.then(() => speakOneUtterance(chunk, { lang, rate, pitch, voiceNameHint })),
+    Promise.resolve()
+  )
 }
 
 /** اسم قديم محفوظ للتوافق الخلفي (يستعمله أي كود سابق ما زال يستدعي speakArabic مباشرة) */
@@ -728,6 +800,7 @@ export default {
   buildNarrationScriptArabic,
   buildNarrationScriptFrench,
   buildNarrationScript,
+  splitForSpeech,
   speak,
   speakArabic,
   scheduleHourlyReadings
