@@ -34,6 +34,10 @@ const DEFAULT_STATE = {
   isfarAlaAngleDeg: -6,
   naflAltitudeDeg: 4,
   hijriCalendarMethod: 'kuwaiti', // 'kuwaiti' | 'ummalqura' | 'astronomical' - انظر hijri.js لشرح الطرق الثلاث
+  adhanEnabled: true, // يرن تلقائيا عند دخول كل صلاة من الخمس - مستقل كليا عن نافذة القراءة الآلية أدناه
+  adhanChoice: 'makkah', // 'makkah' | 'egypt' | 'quds' - انظر ADHAN_SOURCES أدناه
+  tahajjudEnabled: true, // تنبيه سادس (بنفس صوت الأذان المختار) قبل أذان الفجر بـtahajjudOffsetMinutes
+  tahajjudOffsetMinutes: 60,
   autoReadEnabled: true,
   autoReadStartTime: '06:00', // بداية نافذة القراءة الآلية كل نصف ساعة - 'HH:MM' بالتوقيت المحلي المضبوط
   autoReadEndTime: '00:00', // نهايتها - إن تساوى الوقتان فلا قيد (قراءة طوال اليوم)؛ راجع isWithinAutoReadWindow
@@ -119,6 +123,68 @@ function currentNowUtc () {
   return new Date()
 }
 
+// ------------------------- الأذان -------------------------
+// طلب المستخدم: أذان فعلي (لا نطق آلي) عند دخول كل وقت من الصلوات الخمس، باختيار من ثلاثة
+// تسجيلات معروفة (مكة/مصر/القدس)، زائدا تنبيها سادسا قبل الفجر لصلاة التهجد - يعمل هذا دائما
+// بصرف النظر عن نافذة القراءة الآلية (تلك خاصة بالنطق كل نصف ساعة فقط لا بالأذان، فقد يحتاج
+// المستخدم أذان الفجر والتهجد تحديدا في عمق الليل، وهو تماما ما تُسكِته تلك النافذة لو طُبِّقت
+// هنا خطأ) - ويعمل فقط ما دامت الصفحة مفتوحة فعليا (قيد المتصفحات، لا علة في هذا التطبيق).
+//
+// خاص بهذه النسخة (custom-datetime): لا يُستدعى هذا التحقق أصلا إلا حين dateTimeMode === 'now'
+// (انظر موضع الاستدعاء في tick أدناه) - لأنه في وضع "تاريخ ووقت محدد" تكون مواقيت الصلاة
+// المعروضة محسوبة للتاريخ المُجمَّد المختار، لا لتاريخ اليوم الفعلي، فمقارنتها بـDate.now()
+// الحقيقي (الذي يستمر بالتقدم الفعلي بصرف النظر عن التجميد) ستكون مقارنة لا معنى لها، وقد تُصدر
+// أذانا مفاجئا في لحظة عشوائية لا صلة لها بالتاريخ المعروض على الشاشة.
+const ADHAN_SOURCES = {
+  makkah: 'public/adhan/makkah.mp3',
+  egypt: 'public/adhan/egypt.mp3',
+  quds: 'public/adhan/quds.mp3'
+}
+
+let adhanAudioEl = null
+function playAdhanChoice (choice) {
+  const src = ADHAN_SOURCES[choice] || ADHAN_SOURCES.makkah
+  try {
+    if (adhanAudioEl) adhanAudioEl.pause()
+    adhanAudioEl = new Audio(src)
+    adhanAudioEl.play().catch(() => {}) // تجاهل صامت إن منعه المتصفح (مثلا بلا أي تفاعل سابق مع الصفحة)
+  } catch (e) {}
+}
+
+// سجل بآخر يوم محلي (نص "سنة-شهر-يوم") أُذِّن/نُبِّه فيه لكل مناسبة من الستّ - ست مفاتيح ثابتة
+// فقط، لا ينمو أبدا - يمنع تكرار نفس الأذان أكثر من مرة في اليوم نفسه (tick تعمل كل ثانية).
+// التسامح الزمني (ADHAN_FIRE_TOLERANCE_MS) يتعامل مع حالة نادرة (تعليق المتصفح للتبويب فعليا
+// ثم استئنافه بعد فوات وقت الأذان بأكثر من قليل) بتسجيل "أُذِّن" دون تشغيل فعلي، فلا يُفاجأ
+// المستخدم بأذان متأخر ساعات، ولا يتكرر لاحقا بصمت أيضا.
+const ADHAN_FIRE_TOLERANCE_MS = 4 * 60 * 1000
+const lastFiredAdhanDay = {}
+
+function maybeTriggerAdhan (key, triggerDate, todayStr) {
+  if (!triggerDate || lastFiredAdhanDay[key] === todayStr) return
+  const deltaMs = Date.now() - triggerDate.getTime()
+  if (deltaMs < 0) return // لم يحن الوقت بعد
+  lastFiredAdhanDay[key] = todayStr // تُسجَّل فورا (ناجحا كان التشغيل أو متأخرا) - مرة واحدة يوميا
+  if (deltaMs <= ADHAN_FIRE_TOLERANCE_MS) playAdhanChoice(state.adhanChoice)
+}
+
+function checkAdhanTriggers (r) {
+  if (!state.adhanEnabled && !state.tahajjudEnabled) return
+  const lp = r.time.local
+  const todayStr = `${lp.year}-${lp.month}-${lp.day}`
+  const p = r.prayerTimes
+  if (state.adhanEnabled) {
+    maybeTriggerAdhan('fajr', p.fajr, todayStr)
+    maybeTriggerAdhan('dhuhr', p.dhuhr, todayStr)
+    maybeTriggerAdhan('asr', p.asr, todayStr)
+    maybeTriggerAdhan('maghrib', p.maghrib, todayStr)
+    maybeTriggerAdhan('isha', p.isha, todayStr)
+  }
+  if (state.tahajjudEnabled && p.fajr) {
+    const tahajjudDate = new Date(p.fajr.getTime() - state.tahajjudOffsetMinutes * 60000)
+    maybeTriggerAdhan('tahajjud', tahajjudDate, todayStr)
+  }
+}
+
 // ------------------------- حلقة التحديث -------------------------
 
 let lastResult = null
@@ -131,6 +197,7 @@ function tick () {
   render.renderPrayerHints(document, currentPrayerSettings(), state.language)
   updateLocationSummary()
   updateCustomTimeBadge(r)
+  if (state.dateTimeMode !== 'custom') checkAdhanTriggers(r) // انظر الشرح أعلاه - لا معنى له في الوضع المُجمَّد
 }
 
 /** شارة تذكير في الترويسة: تظهر فقط في وضع "تاريخ ووقت محدد" لتوضيح أن المعروض ثابت على لحظة
@@ -276,6 +343,11 @@ function testVoiceNow () {
     .catch(() => { statusEl.textContent = i18n.t('status.speechFailed', state.language) })
 }
 
+function testAdhanNow () {
+  const choice = document.querySelector('input[name="adhanChoice"]:checked').value
+  playAdhanChoice(choice)
+}
+
 // ------------------------- نافذة الإعدادات -------------------------
 
 function openSettingsModal () {
@@ -314,6 +386,10 @@ function fillSettingsFormFromState () {
   document.getElementById('inIshaAngle').value = state.ishaAngleDeg
   document.getElementById('inIsfarAngle').value = state.isfarAlaAngleDeg
   document.getElementById('inNaflAltitude').value = state.naflAltitudeDeg
+  document.getElementById('inAdhanEnabled').checked = state.adhanEnabled
+  document.querySelector(`input[name="adhanChoice"][value="${state.adhanChoice}"]`).checked = true
+  document.getElementById('inTahajjudEnabled').checked = state.tahajjudEnabled
+  document.getElementById('inTahajjudOffset').value = state.tahajjudOffsetMinutes
   document.getElementById('inVoice').value = state.voiceName || ''
   document.getElementById('inRate').value = state.speechRate
   document.getElementById('inAutoReadStart').value = state.autoReadStartTime
@@ -379,6 +455,10 @@ function saveSettingsFromForm () {
   state.ishaAngleDeg = numOr(document.getElementById('inIshaAngle').value, state.ishaAngleDeg)
   state.isfarAlaAngleDeg = numOr(document.getElementById('inIsfarAngle').value, state.isfarAlaAngleDeg)
   state.naflAltitudeDeg = numOr(document.getElementById('inNaflAltitude').value, state.naflAltitudeDeg)
+  state.adhanEnabled = document.getElementById('inAdhanEnabled').checked
+  state.adhanChoice = document.querySelector('input[name="adhanChoice"]:checked').value
+  state.tahajjudEnabled = document.getElementById('inTahajjudEnabled').checked
+  state.tahajjudOffsetMinutes = numOr(document.getElementById('inTahajjudOffset').value, state.tahajjudOffsetMinutes)
   state.voiceName = document.getElementById('inVoice').value || null
   state.speechRate = numOr(document.getElementById('inRate').value, state.speechRate)
   state.autoReadStartTime = document.getElementById('inAutoReadStart').value || state.autoReadStartTime
@@ -635,6 +715,7 @@ function wireEvents () {
   })
 
   document.getElementById('btnTestVoice').addEventListener('click', testVoiceNow)
+  document.getElementById('btnTestAdhan').addEventListener('click', testAdhanNow)
 
   document.getElementById('btnSpeakNow').addEventListener('click', speakNow)
   document.getElementById('chkAutoRead').addEventListener('change', (e) => {

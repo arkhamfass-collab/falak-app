@@ -318,6 +318,27 @@
       <input type="number" id="inNaflAltitude" step="0.5" value="4">
     </div>
 
+    <h3 data-i18n="settings.adhanHeading">الأذان</h3>
+    <label class="switch-label">
+      <input type="checkbox" id="inAdhanEnabled" checked>
+      <span data-i18n="settings.adhanEnabledLabel">تفعيل الأذان عند دخول وقت كل صلاة</span>
+    </label>
+    <div class="radio-row">
+      <label><input type="radio" name="adhanChoice" value="makkah" checked> <span data-i18n="settings.adhanChoiceMakkah">أذان الكعبة المشرفة (مكة)</span></label>
+      <label><input type="radio" name="adhanChoice" value="egypt"> <span data-i18n="settings.adhanChoiceEgypt">أذان جمهورية مصر (القاهرة - الشيخ محمد رفعت)</span></label>
+      <label><input type="radio" name="adhanChoice" value="quds"> <span data-i18n="settings.adhanChoiceQuds">أذان القدس (تسجيل من فلسطين)</span></label>
+    </div>
+    <button type="button" id="btnTestAdhan" class="action-btn" data-i18n="settings.testAdhanBtn">🔊 تجربة الأذان المختار</button>
+    <label class="switch-label">
+      <input type="checkbox" id="inTahajjudEnabled" checked>
+      <span data-i18n="settings.tahajjudEnabledLabel">تنبيه أذان سادس للتهجد قبل الفجر</span>
+    </label>
+    <div class="field-row">
+      <label data-i18n="settings.tahajjudOffsetLabel">عدد الدقائق قبل أذان الفجر</label>
+      <input type="number" id="inTahajjudOffset" step="1" min="1" value="60">
+    </div>
+    <p class="hint" data-i18n="settings.adhanHint">يرنّ الأذان المختار تلقائيا عند دخول كل وقت من الأوقات الخمسة (وتنبيه التهجد السادس إن فُعِّل)، بصرف النظر تماما عن نافذة القراءة الآلية أدناه (تلك خاصة بالنطق الآلي كل نصف ساعة فقط، لا بالأذان). يعمل هذا ما دامت الصفحة مفتوحة فعليا على الجهاز - لا يرن والجهاز نائم أو الصفحة مغلقة. ملاحظة: أذان القدس هنا تسجيل عام من فلسطين، لا تسجيل مؤكد من المسجد الأقصى بعينه.</p>
+
     <h3 data-i18n="settings.voiceHeading">القارئ الصوتي</h3>
     <div class="field-row">
       <label data-i18n="settings.voiceSelectLabel">صوت القراءة</label>
