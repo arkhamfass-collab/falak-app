@@ -245,31 +245,30 @@ export function hmsAngleToArabicWords (deg, mode = 'plain') {
 
 // ------------------------- قراءة الوقت والتاريخ -------------------------
 
-/** يصف الفترة من اليوم (24 ساعة) بعبارة عربية طبيعية */
-function periodOfDay (hour24) {
-  if (hour24 >= 0 && hour24 < 4) return 'ليلا'
-  if (hour24 >= 4 && hour24 < 12) return 'صباحا'
-  if (hour24 === 12) return 'ظهرا'
-  if (hour24 > 12 && hour24 < 17) return 'بعد الظهر'
-  if (hour24 >= 17 && hour24 < 20) return 'مساء'
-  return 'ليلا'
-}
-
 // أسماء ساعات الوقت تُقال في العربية بصيغة التأنيث/الترتيب (الواحدة، الثانية...) لا بالعدد
 // الأصلي (واحد، اثنان...) - فتُفرَد عن arabicNumberToWords لأنها مفردات ثابتة خاصة بالساعة.
-const CLOCK_HOUR_NAMES = [
-  '', 'الواحدة', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة',
-  'السابعة', 'الثامنة', 'التاسعة', 'العاشرة', 'الحادية عشرة', 'الثانية عشرة'
+// مصفوفة ممتدة ٠-٢٣ (نظام ٢٤ ساعة الكامل، بطلب المستخدم صريحا، بدل تحويل قديم لنظام ١٢ ساعة
+// ثم إلحاق صباحا/مساء/ظهرا/ليلا - فنظام ٢٤ ساعة نفسه يرفع اللبس فلا حاجة لهذه اللاحقة إطلاقا،
+// ويتفادى أيضا علة سابقة: الساعة ٠ كانت تتحول عبر "% 12" إلى ١٢ (انظر CLOCK_HOUR_NAMES القديمة
+// ومنطق h12raw===0؟12:h12raw الذي حُذف هنا بالكامل) فتُقرأ خطأ "الثانية عشرة" بدل "صفر".
+const CLOCK_HOUR_NAMES_24 = [
+  'صفر',
+  'الواحدة', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة',
+  'السابعة', 'الثامنة', 'التاسعة', 'العاشرة', 'الحادية عشرة', 'الثانية عشرة',
+  'الثالثة عشرة', 'الرابعة عشرة', 'الخامسة عشرة', 'السادسة عشرة', 'السابعة عشرة', 'الثامنة عشرة', 'التاسعة عشرة',
+  'العشرون', 'الحادية والعشرون', 'الثانية والعشرون', 'الثالثة والعشرون'
 ]
 
-/** يحوّل ساعة (0-23) ودقيقة إلى عبارة "الساعة ... و... دقيقة ... (صباحا/مساء/...)" */
-export function hmsClockToArabicWords (hour24, minute) {
-  const h12raw = hour24 % 12
-  const h12 = h12raw === 0 ? 12 : h12raw
-  const hourWord = CLOCK_HOUR_NAMES[h12]
-  const period = periodOfDay(hour24)
-  if (minute === 0) return `الساعة ${hourWord} تماما ${period}`
-  return `الساعة ${hourWord} و${arabicCountedNoun(minute, NOUN_FORMS.minute)} ${period}`
+/** يحوّل ساعة (0-23) ودقيقة (وثانية اختياريا) إلى عبارة "الساعة ... و... دقيقة وكذا ثانية"
+ * بنظام ٢٤ ساعة الصرف (بلا صباحا/مساء) - second تُذكر فقط إذا مُرِّرت وكانت أكبر من صفر، حتى لا
+ * يتغيّر سلوك المواضع التي لا تمرّر ثواني أصلا (الوقت الحالي، الاقتران القادم). */
+export function hmsClockToArabicWords (hour24, minute, second = 0) {
+  const hourWord = CLOCK_HOUR_NAMES_24[hour24]
+  if (minute === 0 && second === 0) return `الساعة ${hourWord} تماما`
+  const parts = []
+  if (minute > 0) parts.push(arabicCountedNoun(minute, NOUN_FORMS.minute))
+  if (second > 0) parts.push(arabicCountedNoun(second, NOUN_FORMS.second))
+  return `الساعة ${hourWord} و${joinArabicList(parts)}`
 }
 
 /** يحوّل مدة بالساعات العشرية (مثل طول النهار) إلى عبارة "H ساعة وM دقيقة" */
@@ -283,11 +282,14 @@ export function hoursDecimalToArabicDuration (hoursDecimal) {
   return hourPart + ' و' + arabicCountedNoun(mm, NOUN_FORMS.minute)
 }
 
-/** يحوّل كائن Date (أو null) إلى عبارة وقت محلي - يحتاج دالة تحويل لأجزاء محلية مناسبة */
+/** يحوّل كائن Date (أو null) إلى عبارة وقت محلي - يحتاج دالة تحويل لأجزاء محلية مناسبة.
+ * تُذكر الثواني أيضا (بطلب المستخدم صريحا: القراءة الصوتية لمواقيت الصلاة كانت تُسقط الثواني
+ * رغم ذكرها كتابة في الواجهة) - وهذه الدالة مُستعملة أيضا لشروق/زوال/غروب الشمس والقمر ومحاذاة
+ * القبلة الزمنية، فتستفيد كلها من نفس الدقة اتساقا مع ما هو مكتوب. */
 function dateToClockWords (date, localPartsFn) {
   if (!date) return 'غير محقَّق (الجسم لا يعبر هذا الارتفاع اليوم)'
   const parts = localPartsFn(date)
-  return hmsClockToArabicWords(parts.hour, parts.minute)
+  return hmsClockToArabicWords(parts.hour, parts.minute, parts.second)
 }
 
 /** كـdateToClockWords، لكن برسالة بديلة مخصَّصة عند غياب القيمة (لأوقات لا يُفسِّرها "عدم عبور
@@ -295,7 +297,7 @@ function dateToClockWords (date, localPartsFn) {
 function dateToClockWordsOr (date, localPartsFn, fallbackMsg) {
   if (!date) return fallbackMsg
   const parts = localPartsFn(date)
-  return hmsClockToArabicWords(parts.hour, parts.minute)
+  return hmsClockToArabicWords(parts.hour, parts.minute, parts.second)
 }
 
 /** يبني عبارة الاقتران القادم بالتوقيتين العالمي والمحلي معا (كما طلب المستخدم صريحا) */
@@ -364,24 +366,17 @@ export function hmsAngleToFrenchWords (deg, mode = 'plain') {
   return magnitude
 }
 
-function periodOfDayFrench (hour24) {
-  if (hour24 >= 0 && hour24 < 4) return 'de la nuit'
-  if (hour24 >= 4 && hour24 < 12) return 'du matin'
-  if (hour24 === 12) return 'de midi'
-  if (hour24 > 12 && hour24 < 17) return "de l'après-midi"
-  if (hour24 >= 17 && hour24 < 20) return 'du soir'
-  return 'de la nuit'
-}
 
-/** نظير hmsClockToArabicWords بالفرنسية - يُرجع العبارة بلا "Il est" البادئة (يضيفها المستدعي
- * حسب السياق: "Il est..." للوقت الحالي، أو "...à..." لوقت حدث مثل صلاة أو شروق) */
-export function hmsClockToFrenchWords (hour24, minute) {
-  const h12raw = hour24 % 12
-  const h12 = h12raw === 0 ? 12 : h12raw
-  const hourWords = frenchCountedNoun(h12, FRENCH_NOUN_FORMS.hour)
-  const period = periodOfDayFrench(hour24)
-  if (minute === 0) return `${hourWords} pile ${period}`
-  return `${hourWords} et ${frenchCountedNoun(minute, FRENCH_NOUN_FORMS.minute)} ${period}`
+/** نظير hmsClockToArabicWords بالفرنسية - بنظام ٢٤ ساعة الصرف أيضا (بلا تحويل لـ١٢ ساعة ولا
+ * "du matin/de l'après-midi"...)، ويُرجع العبارة بلا "Il est" البادئة (يضيفها المستدعي حسب
+ * السياق: "Il est..." للوقت الحالي، أو "...à..." لوقت حدث مثل صلاة أو شروق). */
+export function hmsClockToFrenchWords (hour24, minute, second = 0) {
+  const hourWords = frenchCountedNoun(hour24, FRENCH_NOUN_FORMS.hour)
+  if (minute === 0 && second === 0) return `${hourWords} pile`
+  const parts = []
+  if (minute > 0) parts.push(frenchCountedNoun(minute, FRENCH_NOUN_FORMS.minute))
+  if (second > 0) parts.push(frenchCountedNoun(second, FRENCH_NOUN_FORMS.second))
+  return `${hourWords} et ${joinFrenchList(parts)}`
 }
 
 /** نظير hoursDecimalToArabicDuration بالفرنسية */
@@ -399,14 +394,14 @@ export function hoursDecimalToFrenchDuration (hoursDecimal) {
 function dateToClockWordsFrench (date, localPartsFn) {
   if (!date) return "non atteint (l'astre ne passe pas par cette hauteur aujourd'hui)"
   const parts = localPartsFn(date)
-  return hmsClockToFrenchWords(parts.hour, parts.minute)
+  return hmsClockToFrenchWords(parts.hour, parts.minute, parts.second)
 }
 
 /** نظير dateToClockWordsOr بالفرنسية (بلا "à" بادئة - يضيفها المستدعي) */
 function dateToClockWordsFrenchOr (date, localPartsFn, fallbackMsg) {
   if (!date) return fallbackMsg
   const parts = localPartsFn(date)
-  return hmsClockToFrenchWords(parts.hour, parts.minute)
+  return hmsClockToFrenchWords(parts.hour, parts.minute, parts.second)
 }
 
 /** نظير nextNewMoonSentence بالفرنسية */
@@ -492,18 +487,18 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     nextNewMoonSentenceFrench(m.nextNewMoon)
   )
 
-  // 5) الوقت النجمي
+  // 5) الوقت النجمي: ليس وقت ساعة حائط (لا معنى لـ"الثانية عشرة ليلا" هنا) بل مقدار زاوي-ساعي
+  // كالمطلع المستقيم والزاوية الساعية تماما - فيُقرأ بنفس أسلوبهما (hmsAngleToFrenchWords، بعد
+  // تحويل الساعات العشرية إلى درجات ×١٥) لا بأسلوب الساعة الحائطية - يصلح هذا أيضا علة كانت
+  // تجعل الساعة ٠ (مثل GST=٠٠:٥٨) تُقرأ خطأ "zéro heure" مُحوَّلة أولا عبر منطق ١٢/٢٤ القديم
+  // (محذوف الآن من hmsClockToFrenchWords نفسها، لكن هذا المقدار لا ينبغي أصلا أن يمر بتلك الدالة).
   const sd = r.sidereal
-  const hmsWordsFr = (hoursDecimal) => {
-    const hh = Math.floor(hoursDecimal)
-    const mm = Math.floor((hoursDecimal - hh) * 60)
-    return hmsClockToFrenchWords(hh, mm)
-  }
+  const siderealHoursToWordsFr = (hoursDecimal) => hmsAngleToFrenchWords(hoursDecimal * 15)
   sections.push(
     'Enfin, le temps sidéral : ' +
-    `le temps sidéral de Greenwich à minuit temps universel était de ${hmsWordsFr(sd.gst0Hours)}. ` +
-    `Le temps sidéral actuel de Greenwich est de ${hmsWordsFr(sd.gstHours)}. ` +
-    `Et le temps sidéral local de votre position est actuellement de ${hmsWordsFr(sd.lstHours)}.`
+    `le temps sidéral de Greenwich à minuit temps universel était de ${siderealHoursToWordsFr(sd.gst0Hours)}. ` +
+    `Le temps sidéral actuel de Greenwich est de ${siderealHoursToWordsFr(sd.gstHours)}. ` +
+    `Et le temps sidéral local de votre position est actuellement de ${siderealHoursToWordsFr(sd.lstHours)}.`
   )
 
   return sections.join('\n\n')
@@ -583,18 +578,17 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     nextNewMoonSentence(m.nextNewMoon)
   )
 
-  // 5) الوقت النجمي
+  // 5) الوقت النجمي: ليس وقت ساعة حائط (فلا معنى لقراءة الساعة ٠ بوصفها "الثانية عشرة ليلا")
+  // بل مقدار زاوي-ساعي كالمطلع المستقيم والزاوية الساعية تماما - فيُقرأ بنفس أسلوبهما
+  // (hmsAngleToArabicWords، بعد تحويل الساعات العشرية إلى درجات ×١٥) لا بأسلوب الساعة الحائطية
+  // (هذا هو إصلاح العلة التي رصدها المستخدم صراحة: الساعة ٠ تُقرأ "الثانية عشرة ليلا" بدل "صفر").
   const sd = r.sidereal
-  const hmsWords = (hoursDecimal) => {
-    const hh = Math.floor(hoursDecimal)
-    const mm = Math.floor((hoursDecimal - hh) * 60)
-    return hmsClockToArabicWords(hh, mm)
-  }
+  const siderealHoursToWords = (hoursDecimal) => hmsAngleToArabicWords(hoursDecimal * 15)
   sections.push(
     'وأخيرا الوقت النجمي: ' +
-    `الوقت النجمي بغرينتش عند منتصف الليل العالمي كان ${hmsWords(sd.gst0Hours)}. ` +
-    `الوقت النجمي الحالي بغرينتش ${hmsWords(sd.gstHours)}. ` +
-    `والوقت النجمي المحلي لموقعكم الآن ${hmsWords(sd.lstHours)}.`
+    `الوقت النجمي بغرينتش عند منتصف الليل العالمي كان ${siderealHoursToWords(sd.gst0Hours)}. ` +
+    `الوقت النجمي الحالي بغرينتش ${siderealHoursToWords(sd.gstHours)}. ` +
+    `والوقت النجمي المحلي لموقعكم الآن ${siderealHoursToWords(sd.lstHours)}.`
   )
 
   return sections.join('\n\n')

@@ -33,7 +33,10 @@ const DEFAULT_STATE = {
   ishaAngleDeg: -18,
   isfarAlaAngleDeg: -6,
   naflAltitudeDeg: 4,
+  hijriCalendarMethod: 'kuwaiti', // 'kuwaiti' | 'ummalqura' | 'astronomical' - انظر hijri.js لشرح الطرق الثلاث
   autoReadEnabled: true,
+  autoReadStartTime: '06:00', // بداية نافذة القراءة الآلية كل نصف ساعة - 'HH:MM' بالتوقيت المحلي المضبوط
+  autoReadEndTime: '00:00', // نهايتها - إن تساوى الوقتان فلا قيد (قراءة طوال اليوم)؛ راجع isWithinAutoReadWindow
   voiceName: null, // null = تلقائي (أول صوت بلغة الواجهة الحالية يجده المتصفح) - أو اسم صوت محدد اختاره المستخدم
   speechRate: 0.95,
   // خاص بهذه النسخة فقط: إمكانية تجميد الحساب على تاريخ/وقت محدد (يدخله المستخدم كتوقيت محلي
@@ -122,7 +125,7 @@ let lastResult = null
 
 function tick () {
   const location = currentLocation()
-  const r = engine.computeAll(location, currentNowUtc(), currentPrayerSettings())
+  const r = engine.computeAll(location, currentNowUtc(), currentPrayerSettings(), state.hijriCalendarMethod)
   lastResult = r
   render.renderAll(document, r, localPartsFn, state.language)
   render.renderPrayerHints(document, currentPrayerSettings(), state.language)
@@ -303,6 +306,7 @@ function fillSettingsFormFromState () {
   document.querySelector(`input[name="tzMode"][value="${state.tzMode}"]`).checked = true
   document.getElementById('inTzOffset').value = state.utcOffsetHours
   document.getElementById('inGnomon').value = state.gnomonCm
+  document.querySelector(`input[name="hijriMethod"][value="${state.hijriCalendarMethod}"]`).checked = true
   document.getElementById('inFajrAngle').value = state.fajrAngleDeg
   document.getElementById('inAsrFactor').value = String(state.asrFactor)
   document.querySelector(`input[name="ishaMode"][value="${state.ishaMode}"]`).checked = true
@@ -312,6 +316,8 @@ function fillSettingsFormFromState () {
   document.getElementById('inNaflAltitude').value = state.naflAltitudeDeg
   document.getElementById('inVoice').value = state.voiceName || ''
   document.getElementById('inRate').value = state.speechRate
+  document.getElementById('inAutoReadStart').value = state.autoReadStartTime
+  document.getElementById('inAutoReadEnd').value = state.autoReadEndTime
   ;['inLat', 'inLon', 'inTzOffset', 'inFajrAngle', 'inIshaAngle', 'inIsfarAngle'].forEach(syncSignButton)
   updateSettingsVisibility()
   if (document.getElementById('inTz').value !== state.timeZone) {
@@ -365,6 +371,7 @@ function saveSettingsFromForm () {
   state.timeZone = document.getElementById('inTz').value
   state.utcOffsetHours = numOr(document.getElementById('inTzOffset').value, state.utcOffsetHours)
   state.gnomonCm = numOr(document.getElementById('inGnomon').value, state.gnomonCm)
+  state.hijriCalendarMethod = document.querySelector('input[name="hijriMethod"]:checked').value
   state.fajrAngleDeg = numOr(document.getElementById('inFajrAngle').value, state.fajrAngleDeg)
   state.asrFactor = numOr(document.getElementById('inAsrFactor').value, state.asrFactor)
   state.ishaMode = document.querySelector('input[name="ishaMode"]:checked').value
@@ -374,6 +381,8 @@ function saveSettingsFromForm () {
   state.naflAltitudeDeg = numOr(document.getElementById('inNaflAltitude').value, state.naflAltitudeDeg)
   state.voiceName = document.getElementById('inVoice').value || null
   state.speechRate = numOr(document.getElementById('inRate').value, state.speechRate)
+  state.autoReadStartTime = document.getElementById('inAutoReadStart').value || state.autoReadStartTime
+  state.autoReadEndTime = document.getElementById('inAutoReadEnd').value || state.autoReadEndTime
   saveState()
   closeSettingsModal()
   if (newLang !== state.language) setLanguage(newLang) // يطبّق الترجمة ويُعيد العرض بنفسه
@@ -561,11 +570,36 @@ function speakNow () {
     .catch((e) => { statusEl.textContent = i18n.t('status.speechFailed', state.language) })
 }
 
+// نافذة تفعيل القراءة الآلية كل نصف ساعة (طلب المستخدم: مثلا من ٠٦:٠٠ إلى منتصف الليل فقط) -
+// لا تؤثر إطلاقا على زر "قراءة الآن" (speakNow)، فهو يعمل دائما بصرف النظر عن هذه النافذة.
+function minutesSinceMidnight (hhmm) {
+  if (typeof hhmm !== 'string') return 0
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return 0
+  const h = Math.min(23, Math.max(0, Number(m[1])))
+  const min = Math.min(59, Math.max(0, Number(m[2])))
+  return h * 60 + min
+}
+
+function isWithinAutoReadWindow () {
+  const startMin = minutesSinceMidnight(state.autoReadStartTime)
+  const endMin = minutesSinceMidnight(state.autoReadEndTime)
+  if (startMin === endMin) return true // الوقتان متساويان = إلغاء القيد، قراءة طوال اليوم
+  const nowParts = localPartsFn(new Date())
+  const nowMin = nowParts.hour * 60 + nowParts.minute
+  if (startMin < endMin) return nowMin >= startMin && nowMin < endMin
+  // نافذة تعبر منتصف الليل (مثلا ٠٦:٠٠ → ٠٠:٠٠): نشطة ٠٦:٠٠-٢٣:٥٩، صامتة ٠٠:٠٠-٠٥:٥٩
+  return nowMin >= startMin || nowMin < endMin
+}
+
 function startAutoReading () {
   if (stopHourlyReadings) return
   stopHourlyReadings = reader.scheduleHourlyReadings(
     () => reader.buildNarrationScript(lastResult, localPartsFn, state.language),
-    (text) => reader.speak(text, currentSpeechOptions()).catch(() => {})
+    (text) => {
+      if (!isWithinAutoReadWindow()) return Promise.resolve()
+      return reader.speak(text, currentSpeechOptions()).catch(() => {})
+    }
   )
 }
 function stopAutoReading () {

@@ -29,13 +29,41 @@ function nearestEquivalent (value, anchor, period = SECS_PER_DAY) {
   return anchor + wrapped
 }
 
+const TWO_PI = 2 * Math.PI
+
+/**
+ * علة ثانية مُثبَتة تجريبيا (مختلفة كليا عن علة القفزة اليومية أعلاه): حين يعبر المطلع المستقيم
+ * للجرم ٠/٣٦٠° خلال يومي الاستيفاء الثلاثي الثلاثة (أي يوم اعتدال ربيعي للشمس - مرة واحدة كل
+ * عام، تماما بين يومين متتاليين كل سنة - أو عدة مرات شهريا للقمر، إذ يدور مطلعه كاملا كل نحو
+ * ٢٧ يوما)، تستعمل riseLib.times() قيم ra3 الثلاث خاما (مثلا [358.3°, 359.2°, 0.14°]) في استيفاء
+ * يفترض استمرارية الدالة - فيرى "قفزة" زائفة تناهز ٣٦٠° بين عنصرين متتاليين (والصحيح فرق صغير
+ * دون درجة واحدة) فينحرف الاستيفاء كليا، منتجا نتائج عشوائية تماما (قد تبعد ساعات عن الصحيح) -
+ * خلافا لعلة القفزة اليومية (فرق يوم كامل مضبوط تقريبا) التي يُصلحها nearestEquivalent أدناه.
+ * التحقق العملي (خطوط طول/عروض متعددة، ٢٠٢٧-٠٣-٢٠ و٢٠٢٧-٠٣-٢١، يوم عبور المطلع المستقيم ٠/٣٦٠°
+ * لتلك السنة بالضبط): transit/rise/set قبل الإصلاح ينحرف ساعات عن approxTimes (الفارق المتوقع
+ * ثوان إلى دقائق قليلة فقط)، وبعده يعود للفارق الطبيعي في كل الحالات المفحوصة.
+ * الإصلاح: "تطويق" (unwrap) المصفوفة الثلاثية نفسها قبل تمريرها لـriseLib.times - كل عنصر
+ * (من الثاني فصاعدا) يُستبدل بأقرب مكافئ له (±2π×n) للعنصر الذي قبله (بعد تطويقه هو نفسه) -
+ * فتصبح المتتابعة متصلة حقا (مثلا [358.3°, 359.2°, 360.14°]) دون أي تغيير في قيمتها الفعلية
+ * (مكافئة تماما مودلو 2π) ودون أي تأثير على δ3 (الميل لا يدور حول ٣٦٠° أصلا، فلا يحتاج تطويقا).
+ */
+function unwrapContinuous (values) {
+  const out = [values[0]]
+  for (let i = 1; i < values.length; i++) {
+    const prev = out[i - 1]
+    const v = values[i]
+    out.push(v + TWO_PI * Math.round((prev - v) / TWO_PI))
+  }
+  return out
+}
+
 /**
  * نظير آمن لـriseLib.times (نفس التوقيع والمُعاملات والنتيجة ونفس الاستثناءات المرفوعة
  * errorAboveHorizon/errorBelowHorizon عند عدم وجود عبور فعلي) - انظر توثيق rise.js.
  */
 export function safeTimes (p, deltaTsec, h0, Th0, ra3, dec3) {
   const approx = riseLib.approxTimes(p, h0, Th0, ra3[1], dec3[1])
-  const refined = riseLib.times(p, deltaTsec, h0, Th0, ra3, dec3)
+  const refined = riseLib.times(p, deltaTsec, h0, Th0, unwrapContinuous(ra3), dec3)
   return {
     rise: nearestEquivalent(refined.rise, approx.rise),
     transit: nearestEquivalent(refined.transit, approx.transit),

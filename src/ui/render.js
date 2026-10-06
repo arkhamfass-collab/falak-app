@@ -50,11 +50,16 @@ export function renderHeader (root, r, lang = 'ar') {
   setText(root, '#weekdayNow', lang === 'fr' ? r.time.local.weekdayNameFrench : r.time.local.weekdayNameArabic)
   const hijriMonth = lang === 'fr' ? r.time.hijri.monthNameFrench : r.time.hijri.monthNameArabic
   const gregMonth = lang === 'fr' ? r.time.gregorian.monthNameFrench : r.time.gregorian.monthNameArabic
+  // تنبيه مقتضب (نادر الظهور فعليا) حين يُطلَب تقويم أم القرى لتاريخ خارج مداه المدعوم (١٣١٨-١٥٠٠هـ
+  // / ١٩٠٠-٢٠٧٧م تقريبا) فيرتد العرض تلقائيا للتقويم الجدولي بدل تعطّل العرض - انظر hijri.js
+  const fallbackNote = r.time.hijri.outOfRangeFallback
+    ? (lang === 'fr' ? ' (hors plage Umm al-Qura — calendrier koweïtien)' : ' (خارج مدى أم القرى - عُرض التقويم الكويتي)')
+    : ''
   if (lang === 'fr') {
-    setText(root, '#hijriNow', `Hégire : ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year}`)
+    setText(root, '#hijriNow', `Hégire : ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year}${fallbackNote}`)
     setText(root, '#gregorianNow', `Grégorien : ${r.time.gregorian.day} ${gregMonth} ${r.time.gregorian.year}`)
   } else {
-    setText(root, '#hijriNow', `هجري: ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year} هـ`)
+    setText(root, '#hijriNow', `هجري: ${r.time.hijri.day} ${hijriMonth} ${r.time.hijri.year} هـ${fallbackNote}`)
     setText(root, '#gregorianNow', `ميلادي: ${r.time.gregorian.day} ${gregMonth} ${r.time.gregorian.year} م`)
   }
 }

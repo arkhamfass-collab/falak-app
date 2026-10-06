@@ -35,8 +35,9 @@ export const DEFAULT_LOCATION = {
  * @param {{latDeg:number, lonEastDeg:number, observerTime:object, gnomonCm?:number}} [location]
  * @param {Date} [nowUtc] - اللحظة المطلوبة (افتراضيا الآن)
  * @param {object} [prayerSettings] - إعدادات مواقيت الصلاة (اختياري، انظر DEFAULT_PRAYER_SETTINGS في prayerTimes.js)
+ * @param {'kuwaiti'|'ummalqura'|'astronomical'} [hijriMethod] - طريقة حساب التقويم الهجري (انظر hijri.js)
  */
-export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), prayerSettings = {}) {
+export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), prayerSettings = {}, hijriMethod = 'kuwaiti') {
   const { latDeg, lonEastDeg, observerTime, gnomonCm = 60 } = location
 
   const jdUT = julian.DateToJD(nowUtc) // لليوم الجولياني بالتوقيت العالمي (للوقت النجمي والأفقي)
@@ -44,7 +45,7 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
 
   const localParts = timeutilModule.localPartsFromUTC(nowUtc, observerTime)
   const utcOffsetHours = timeutilModule.currentUtcOffsetHours(nowUtc, observerTime)
-  const hijri = hijriModule.hijriFromLocalGregorianDate(localParts.year, localParts.month, localParts.day)
+  const hijri = hijriModule.hijriForMethod(hijriMethod, localParts.year, localParts.month, localParts.day, latDeg, lonEastDeg, observerTime)
   const weekdayIndex = new Date(Date.UTC(localParts.year, localParts.month - 1, localParts.day)).getUTCDay()
 
   const time = {

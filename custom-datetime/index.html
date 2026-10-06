@@ -292,6 +292,14 @@
       <input type="number" id="inGnomon" step="1" value="60">
     </div>
 
+    <h3 data-i18n="settings.hijriHeading">التقويم الهجري</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="hijriMethod" value="kuwaiti" checked> <span data-i18n="settings.hijriMethodKuwaiti">التقويم الكويتي (حسابي جدولي)</span></label>
+      <label><input type="radio" name="hijriMethod" value="ummalqura"> <span data-i18n="settings.hijriMethodUmmAlQura">تقويم أم القرى (الرسمي في السعودية)</span></label>
+      <label><input type="radio" name="hijriMethod" value="astronomical"> <span data-i18n="settings.hijriMethodAstronomical">تقويم فلكي محسوب (اقتران + غروب)</span></label>
+    </div>
+    <p class="hint" data-i18n="settings.hijriMethodHint">التقويم الكويتي حسابي جدولي تقليدي بالتناوب بين شهور 30 و29 يوما، ولا يعتمد على رصد فلكي فعلي. تقويم أم القرى هو التقويم الرسمي المعتمد في المملكة العربية السعودية (متوفر فقط بين عامي 1318 و1500هـ، وخارج هذا المدى يُستخدم التقويم الكويتي تلقائيا بدلا عنه). التقويم الفلكي المحسوب يحسب بداية كل شهر فعليا بناء على لحظة الاقتران الفلكي للقمر وغروب الشمس في موقعكم الجغرافي. اختلاف التاريخ يوما واحدا بين الطرق الثلاث أمر طبيعي ومتوقع وليس خطأ.</p>
+
     <h3 data-i18n="settings.prayerHeading">مواقيت الصلاة</h3>
     <div class="field-row">
       <label data-i18n="settings.fajrAngleLabel">زاوية الفجر (تحت الأفق)</label>
@@ -345,6 +353,16 @@
     </div>
     <button type="button" id="btnTestVoice" class="action-btn" data-i18n="settings.testVoiceBtn">🔊 تجربة الصوت</button>
     <p class="hint" data-i18n="settings.voiceHint">جودة النطق تعتمد على الصوت العربي المثبَّت على جهازكم لا على التطبيق نفسه - إن توفر أكثر من صوت عربي جرّبوها هنا واختاروا الأوضح. تقليل السرعة قد يحسّن وضوح بعض الأصوات.</p>
+
+    <div class="field-row">
+      <label data-i18n="settings.autoReadStartLabel">بداية نافذة القراءة التلقائية</label>
+      <input type="time" id="inAutoReadStart" value="06:00">
+    </div>
+    <div class="field-row">
+      <label data-i18n="settings.autoReadEndLabel">نهاية نافذة القراءة التلقائية</label>
+      <input type="time" id="inAutoReadEnd" value="00:00">
+    </div>
+    <p class="hint" data-i18n="settings.autoReadWindowHint">تسري على "القراءة الآلية كل نصف ساعة" فقط (زر "قراءة الآن" يعمل دائما بصرف النظر عنها) - تبقى ساكتة خارج هذه النافذة الزمنية بدل القراءة طوال اليوم والليل، وتعاود القراءة تلقائيا عند دخول النافذة من جديد دون أي تدخل. اجعلا الوقتين متساويين لإلغاء القيد والقراءة طوال اليوم.</p>
 
     <div class="modal-actions">
       <button id="btnSaveSettings" class="action-btn primary" data-i18n="settings.save">حفظ</button>
