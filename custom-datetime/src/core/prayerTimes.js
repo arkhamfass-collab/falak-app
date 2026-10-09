@@ -28,6 +28,12 @@ export const DEFAULT_PRAYER_SETTINGS = {
   ishaOffsetMinutes: 90, // اختيار المستخدم: عشاء = مغرب + 90 دقيقة
   ishaAngleDeg: -18, // تُستعمل فقط إذا ishaMode === 'angle' (مرونة لتبديل الطريقة مستقبلا)
   ihtiyatMinutes: 0, // هامش احتياط اختياري (دقائق)؛ 0 الآن = حساب فلكي خالص بلا هامش
+  maghribTamkinMinutes: 2, // هامش "تمكين" الغروب (دقائق تُضاف بعد الغروب الفلكي الخالص قبل إعلان
+  // دخول وقت المغرب) - طلب المستخدم صراحة. يخص هذا الهامش إعلان وقت المغرب نفسه (وبالتبعية
+  // العشاء في وضع offsetAfterMaghrib أدناه، لأنه يُحسب من وقت إعلان المغرب كما تفعل التقاويم
+  // الرسمية) فقط - لا يُطبَّق على حساب "بداية الثلث الأخير من الليل" (تلك تبقى من الغروب
+  // الفلكي الخالص إلى الفجر الفلكي الخالص، بلا أي هامش بشري، تماما كما ihtiyatMinutes أعلاه
+  // لا يُطبَّق على حدّ الفجر المُستعمل هناك رغم تطبيقه على وقت إعلان الفجر نفسه بالأسفل).
   isfarAlaAngleDeg: -6, // ارتفاع الإسفار الأعلى (اختيار المستخدم صريحا)
   naflAltitudeDeg: 4 // ارتفاع "قيد رمح" لحل النافلة (اختيار المستخدم صريحا، مطابقة لبرنامجهم "الهادي الناطق")
 }
@@ -77,7 +83,12 @@ export function computePrayerTimes (localYear, localMonth1to12, localDay, observ
     asrStatus = asrCrossing.status
   }
 
-  const maghribDate = main.setDate
+  // الغروب الفلكي الخالص (بلا أي هامش بشري) - يبقى هذا، لا maghribDate أدناه، أساس حساب "الليلة
+  // الشرعية" (الثلث الأخير) بالأسفل. maghribDate نفسه هو وقت *إعلان* دخول صلاة المغرب المعروض
+  // للمستخدم، بعد إضافة هامش التمكين - يطابق هذا ما تفعله التقاويم الرسمية (تمكين ثم عشاء من بعده).
+  const trueMaghribDate = main.setDate
+  const maghribTamkinMs = (s.maghribTamkinMinutes || 0) * 60000
+  const maghribDate = trueMaghribDate ? new Date(trueMaghribDate.getTime() + maghribTamkinMs) : null
 
   // العشاء
   let ishaDate = null
@@ -98,13 +109,13 @@ export function computePrayerTimes (localYear, localMonth1to12, localDay, observ
   // منتصف الليل الساعاتي) - فنحتاج فجر "اليوم التالي" تحديدا، بنفس زاوية fajrAngleDeg الحالية.
   let lastThirdOfNightStart = null
   let lastThirdOfNightStatus = (main.status === 'ok') ? 'pending' : main.status
-  if (maghribDate) {
+  if (trueMaghribDate) {
     const tomorrowFajrCrossing = sun.sunAngleCrossing(
       localYear, localMonth1to12, localDay + 1, observerTime, latDeg, lonEastDeg, s.fajrAngleDeg
     )
     if (tomorrowFajrCrossing.riseDate) {
-      const nightMs = tomorrowFajrCrossing.riseDate.getTime() - maghribDate.getTime()
-      lastThirdOfNightStart = new Date(maghribDate.getTime() + (nightMs * 2) / 3)
+      const nightMs = tomorrowFajrCrossing.riseDate.getTime() - trueMaghribDate.getTime()
+      lastThirdOfNightStart = new Date(trueMaghribDate.getTime() + (nightMs * 2) / 3)
       lastThirdOfNightStatus = 'ok'
     } else {
       lastThirdOfNightStatus = tomorrowFajrCrossing.status

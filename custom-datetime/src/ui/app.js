@@ -33,6 +33,7 @@ const DEFAULT_STATE = {
   ishaAngleDeg: -18,
   isfarAlaAngleDeg: -6,
   naflAltitudeDeg: 4,
+  maghribTamkinMinutes: 2, // هامش تمكين الغروب (دقائق تُضاف بعد الغروب الفلكي قبل إعلان دخول المغرب) - يطال العشاء بالتبعية (في وضع offsetAfterMaghrib) لا "الثلث الأخير من الليل"، انظر الشرح في prayerTimes.js
   hijriCalendarMethod: 'kuwaiti', // 'kuwaiti' | 'ummalqura' | 'astronomical' - انظر hijri.js لشرح الطرق الثلاث
   adhanEnabled: true, // يرن تلقائيا عند دخول كل صلاة من الخمس - مستقل كليا عن نافذة القراءة الآلية أدناه
   adhanChoice: 'makkah', // 'makkah' | 'egypt' | 'quds' - انظر ADHAN_SOURCES أدناه
@@ -98,7 +99,8 @@ function currentPrayerSettings () {
     ishaOffsetMinutes: Number(state.ishaOffsetMinutes),
     ishaAngleDeg: Number(state.ishaAngleDeg),
     isfarAlaAngleDeg: Number(state.isfarAlaAngleDeg),
-    naflAltitudeDeg: Number(state.naflAltitudeDeg)
+    naflAltitudeDeg: Number(state.naflAltitudeDeg),
+    maghribTamkinMinutes: Number(state.maghribTamkinMinutes)
   }
 }
 
@@ -386,6 +388,7 @@ function fillSettingsFormFromState () {
   document.getElementById('inIshaAngle').value = state.ishaAngleDeg
   document.getElementById('inIsfarAngle').value = state.isfarAlaAngleDeg
   document.getElementById('inNaflAltitude').value = state.naflAltitudeDeg
+  document.getElementById('inMaghribTamkin').value = state.maghribTamkinMinutes
   document.getElementById('inAdhanEnabled').checked = state.adhanEnabled
   document.querySelector(`input[name="adhanChoice"][value="${state.adhanChoice}"]`).checked = true
   document.getElementById('inTahajjudEnabled').checked = state.tahajjudEnabled
@@ -455,6 +458,7 @@ function saveSettingsFromForm () {
   state.ishaAngleDeg = numOr(document.getElementById('inIshaAngle').value, state.ishaAngleDeg)
   state.isfarAlaAngleDeg = numOr(document.getElementById('inIsfarAngle').value, state.isfarAlaAngleDeg)
   state.naflAltitudeDeg = numOr(document.getElementById('inNaflAltitude').value, state.naflAltitudeDeg)
+  state.maghribTamkinMinutes = numOr(document.getElementById('inMaghribTamkin').value, state.maghribTamkinMinutes)
   state.adhanEnabled = document.getElementById('inAdhanEnabled').checked
   state.adhanChoice = document.querySelector('input[name="adhanChoice"]:checked').value
   state.tahajjudEnabled = document.getElementById('inTahajjudEnabled').checked

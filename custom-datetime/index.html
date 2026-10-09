@@ -341,6 +341,11 @@
       <label data-i18n="settings.naflAltitudeLabel">ارتفاع حل النافلة ("قيد رمح")</label>
       <input type="number" id="inNaflAltitude" step="0.5" value="4">
     </div>
+    <div class="field-row">
+      <label data-i18n="settings.maghribTamkinLabel">هامش تمكين الغروب (دقائق بعد الغروب الفلكي)</label>
+      <input type="number" id="inMaghribTamkin" step="1" min="0" value="2">
+    </div>
+    <p class="hint" data-i18n="settings.maghribTamkinHint">يؤخَّر إعلان دخول وقت المغرب بهذا القدر بعد الغروب الفلكي الخالص، احتياطا. يتأخر معه وقت العشاء بالتبعية (في وضع "مغرب+دقائق" أدناه)، لكن بداية الثلث الأخير من الليل تبقى محسوبة من الغروب الفلكي الخالص بلا هذا الهامش. اجعلوه صفرا لإلغائه (حساب فلكي خالص).</p>
 
     <h3 data-i18n="settings.adhanHeading">الأذان</h3>
     <label class="switch-label">
