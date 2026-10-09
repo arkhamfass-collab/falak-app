@@ -115,13 +115,13 @@
     <h2 class="panel-title" data-i18n="moon.panelTitle">بيانات القمر</h2>
 
     <div class="data-group">
-      <h3 data-i18n="moon.eclGroupTitle">الإحداثيات البروجية</h3>
+      <h3 id="moonEclHeading" data-i18n="moon.eclGroupTitle">الإحداثيات البروجية</h3>
       <div class="kv"><span data-i18n="common.eclLon">الطول البروجي</span><b data-f="moon.ecl.lon">—</b></div>
       <div class="kv"><span data-i18n="moon.eclLatLabel">العرض البروجي</span><b data-f="moon.ecl.lat">—</b></div>
     </div>
 
     <div class="data-group">
-      <h3 data-i18n="common.zodiacGroupTitle">البرج والمنزلة</h3>
+      <h3 id="moonZodiacHeading" data-i18n="common.zodiacGroupTitle">البرج والمنزلة</h3>
       <div class="kv"><span data-i18n="common.degreeInSignLabel">الدرجة في البرج</span><b data-f="moon.zodiacDeg">—</b></div>
       <div class="kv"><span data-i18n="common.zodiacSignLabel">البرج</span><b data-f="moon.zodiacSign">—</b></div>
       <div class="kv"><span data-i18n="common.degreeInManzilLabel">الدرجة في المنزلة</span><b data-f="moon.manzilDeg">—</b></div>
@@ -129,7 +129,7 @@
     </div>
 
     <div class="data-group">
-      <h3 data-i18n="common.eqGroupTitle">الإحداثيات الاستوائية</h3>
+      <h3 id="moonEqHeading" data-i18n="common.eqGroupTitle">الإحداثيات الاستوائية</h3>
       <div class="kv"><span data-i18n="common.ra">المطلع المستقيم</span><b data-f="moon.eq.ra">—</b></div>
       <div class="kv"><span data-i18n="common.dec">الميل</span><b data-f="moon.eq.dec">—</b></div>
     </div>
@@ -275,6 +275,13 @@
       <label><input type="radio" name="hijriMethod" value="astronomical"> <span data-i18n="settings.hijriMethodAstronomical">تقويم فلكي محسوب (اقتران + غروب)</span></label>
     </div>
     <p class="hint" data-i18n="settings.hijriMethodHint">التقويم الكويتي حسابي جدولي تقليدي بالتناوب بين شهور 30 و29 يوما، ولا يعتمد على رصد فلكي فعلي. تقويم أم القرى هو التقويم الرسمي المعتمد في المملكة العربية السعودية (متوفر فقط بين عامي 1318 و1500هـ، وخارج هذا المدى يُستخدم التقويم الكويتي تلقائيا بدلا عنه). التقويم الفلكي المحسوب يحسب بداية كل شهر فعليا بناء على لحظة الاقتران الفلكي للقمر وغروب الشمس في موقعكم الجغرافي. اختلاف التاريخ يوما واحدا بين الطرق الثلاث أمر طبيعي ومتوقع وليس خطأ.</p>
+
+    <h3 data-i18n="settings.moonFrameHeading">مرجع إحداثيات القمر</h3>
+    <div class="radio-row">
+      <label><input type="radio" name="moonCoordFrame" value="geocentric" checked> <span data-i18n="settings.moonFrameGeocentric">جيومركزي (الافتراضي - مركز الأرض)</span></label>
+      <label><input type="radio" name="moonCoordFrame" value="topocentric"> <span data-i18n="settings.moonFrameTopocentric">طوبوغرافي (موقع الراصد - كبرنامج Sky Safari)</span></label>
+    </div>
+    <p class="hint" data-i18n="settings.moonFrameHint">الإحداثيات الجيومركزية (الافتراضية) تُحسب كما لو كان الراصد في مركز الأرض، وهي القيم التقليدية في الزيجات والتقاويم الفلكية. الإحداثيات الطوبوغرافية تُصحَّح بمنظر (parallax) القمر انطلاقا من موقعكم الفعلي على سطح الأرض، وهي ما تعرضه بعض برامج الفلك مثل Sky Safari، وقد يبلغ الفرق بينهما نحو درجة تقريبا. يطال هذا الخيار الطول والعرض البروجيين والمطلع المستقيم والميل والبرج/المنزلة للقمر فقط، ولا يغيّر شيئا في الارتفاع/السمت (محسوبان دوما من موقعكم أصلا) ولا في الشروق/العبور/الغروب ولا في طور القمر وعمره وإنارته.</p>
 
     <h3 data-i18n="settings.prayerHeading">مواقيت الصلاة</h3>
     <div class="field-row">

@@ -31,6 +31,7 @@ const DEFAULT_STATE = {
   naflAltitudeDeg: 4,
   maghribTamkinMinutes: 2, // هامش تمكين الغروب (دقائق تُضاف بعد الغروب الفلكي قبل إعلان دخول المغرب) - يطال العشاء بالتبعية (في وضع offsetAfterMaghrib) لا "الثلث الأخير من الليل"، انظر الشرح في prayerTimes.js
   hijriCalendarMethod: 'kuwaiti', // 'kuwaiti' | 'ummalqura' | 'astronomical' - انظر hijri.js لشرح الطرق الثلاث
+  moonCoordFrame: 'geocentric', // 'geocentric' | 'topocentric' - إطار إحداثيات القمر البروجية/الاستوائية المعروضة (انظر الشرح في engine.js/moon.js)؛ لا يطال الشمس (منظرها الأفقي مهمل أصلا) ولا الأفقي/الشروق-الغروب/الطور للقمر نفسه
   adhanEnabled: true, // يرن تلقائيا عند دخول كل صلاة من الخمس - مستقل كليا عن نافذة القراءة الآلية أدناه
   adhanChoice: 'makkah', // 'makkah' | 'egypt' | 'quds' - انظر ADHAN_SOURCES أدناه
   tahajjudEnabled: true, // تنبيه سادس (بنفس صوت الأذان المختار) قبل أذان الفجر بـtahajjudOffsetMinutes
@@ -162,7 +163,7 @@ let lastResult = null
 
 function tick () {
   const location = currentLocation()
-  const r = engine.computeAll(location, new Date(), currentPrayerSettings(), state.hijriCalendarMethod)
+  const r = engine.computeAll(location, new Date(), currentPrayerSettings(), state.hijriCalendarMethod, state.moonCoordFrame)
   lastResult = r
   render.renderAll(document, r, localPartsFn, state.language)
   render.renderPrayerHints(document, currentPrayerSettings(), state.language)
@@ -327,6 +328,7 @@ function fillSettingsFormFromState () {
   document.getElementById('inTzOffset').value = state.utcOffsetHours
   document.getElementById('inGnomon').value = state.gnomonCm
   document.querySelector(`input[name="hijriMethod"][value="${state.hijriCalendarMethod}"]`).checked = true
+  document.querySelector(`input[name="moonCoordFrame"][value="${state.moonCoordFrame}"]`).checked = true
   document.getElementById('inFajrAngle').value = state.fajrAngleDeg
   document.getElementById('inAsrFactor').value = String(state.asrFactor)
   document.querySelector(`input[name="ishaMode"][value="${state.ishaMode}"]`).checked = true
@@ -386,6 +388,7 @@ function saveSettingsFromForm () {
   state.utcOffsetHours = numOr(document.getElementById('inTzOffset').value, state.utcOffsetHours)
   state.gnomonCm = numOr(document.getElementById('inGnomon').value, state.gnomonCm)
   state.hijriCalendarMethod = document.querySelector('input[name="hijriMethod"]:checked').value
+  state.moonCoordFrame = document.querySelector('input[name="moonCoordFrame"]:checked').value
   state.fajrAngleDeg = numOr(document.getElementById('inFajrAngle').value, state.fajrAngleDeg)
   state.asrFactor = numOr(document.getElementById('inAsrFactor').value, state.asrFactor)
   state.ishaMode = document.querySelector('input[name="ishaMode"]:checked').value

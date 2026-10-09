@@ -81,6 +81,10 @@ export const STRINGS = {
     'moon.panelTitle': 'بيانات القمر',
     'moon.eclGroupTitle': 'الإحداثيات البروجية',
     'moon.eclLatLabel': 'العرض البروجي',
+    // لاحقتان تُضافان بعد عنوان كل قسم في تبويب القمر (البروجي/البرج والمنزلة/الاستوائي) لتوضيح
+    // الإطار الفعلي المعروض حاليا - راجع settings.moonFrame* أدناه وrenderMoon في render.js
+    'moon.frameGeocentricSuffix': ' (جيومركزي)',
+    'moon.frameTopocentricSuffix': ' (طوبوغرافي)',
     'moon.rtsGroupTitle': 'الشروق والعبور والغروب',
     'moon.transit': 'العبور',
     'moon.miscGroupTitle': 'المطال والعمر والبعد والطور',
@@ -134,6 +138,12 @@ export const STRINGS = {
     'settings.hijriMethodUmmAlQura': 'تقويم أم القرى (الرسمي في السعودية)',
     'settings.hijriMethodAstronomical': 'تقويم فلكي محسوب (اقتران + غروب)',
     'settings.hijriMethodHint': 'التقويم الكويتي حسابي جدولي تقليدي بالتناوب بين شهور 30 و29 يوما، ولا يعتمد على رصد فلكي فعلي. تقويم أم القرى هو التقويم الرسمي المعتمد في المملكة العربية السعودية (متوفر فقط بين عامي 1318 و1500هـ، وخارج هذا المدى يُستخدم التقويم الكويتي تلقائيا بدلا عنه). التقويم الفلكي المحسوب يحسب بداية كل شهر فعليا بناء على لحظة الاقتران الفلكي للقمر وغروب الشمس في موقعكم الجغرافي. اختلاف التاريخ يوما واحدا بين الطرق الثلاث أمر طبيعي ومتوقع وليس خطأ.',
+
+    'settings.moonFrameHeading': 'مرجع إحداثيات القمر',
+    'settings.moonFrameGeocentric': 'جيومركزي (الافتراضي - مركز الأرض)',
+    'settings.moonFrameTopocentric': 'طوبوغرافي (موقع الراصد - كبرنامج Sky Safari)',
+    'settings.moonFrameHint': 'الإحداثيات الجيومركزية (الافتراضية) تُحسب كما لو كان الراصد في مركز الأرض، وهي القيم التقليدية في الزيجات والتقاويم الفلكية. الإحداثيات الطوبوغرافية تُصحَّح بمنظر (parallax) القمر انطلاقا من موقعكم الفعلي على سطح الأرض، وهي ما تعرضه بعض برامج الفلك مثل Sky Safari، وقد يبلغ الفرق بينهما نحو درجة تقريبا. يطال هذا الخيار الطول والعرض البروجيين والمطلع المستقيم والميل والبرج/المنزلة للقمر فقط، ولا يغيّر شيئا في الارتفاع/السمت (محسوبان دوما من موقعكم أصلا) ولا في الشروق/العبور/الغروب ولا في طور القمر وعمره وإنارته.',
+
     'settings.prayerHeading': 'مواقيت الصلاة',
     'settings.fajrAngleLabel': 'زاوية الفجر (تحت الأفق)',
     'settings.asrMethodLabel': 'مذهب العصر',
@@ -259,6 +269,8 @@ export const STRINGS = {
     'moon.panelTitle': 'Données de la Lune',
     'moon.eclGroupTitle': 'Coordonnées écliptiques',
     'moon.eclLatLabel': 'Latitude écliptique',
+    'moon.frameGeocentricSuffix': ' (géocentrique)',
+    'moon.frameTopocentricSuffix': ' (topocentrique)',
     'moon.rtsGroupTitle': 'Lever, passage au méridien et coucher',
     'moon.transit': 'Passage au méridien',
     'moon.miscGroupTitle': 'Élongation, âge, distance et phase',
@@ -312,6 +324,12 @@ export const STRINGS = {
     'settings.hijriMethodUmmAlQura': 'Calendrier Umm al-Qura (officiel en Arabie saoudite)',
     'settings.hijriMethodAstronomical': 'Calendrier astronomique calculé (conjonction + coucher du soleil)',
     'settings.hijriMethodHint': "Le calendrier koweïtien est un calendrier tabulaire traditionnel alternant des mois de 30 et 29 jours, sans observation astronomique réelle. Le calendrier Umm al-Qura est le calendrier officiel du Royaume d'Arabie saoudite (disponible uniquement entre 1318 et 1500 AH ; en dehors de cette plage, le calendrier koweïtien est utilisé automatiquement à la place). Le calendrier astronomique calculé détermine le début de chaque mois à partir du moment réel de la conjonction lunaire et de l'heure du coucher du soleil à votre position géographique. Il est normal et attendu que la date diffère d'un jour entre ces trois méthodes - ce n'est pas une erreur.",
+
+    'settings.moonFrameHeading': 'Référentiel des coordonnées de la Lune',
+    'settings.moonFrameGeocentric': 'Géocentrique (par défaut - centre de la Terre)',
+    'settings.moonFrameTopocentric': "Topocentrique (position de l'observateur - comme Sky Safari)",
+    'settings.moonFrameHint': "Les coordonnées géocentriques (par défaut) sont calculées comme si l'observateur se trouvait au centre de la Terre ; ce sont les valeurs traditionnelles des éphémérides et calendriers astronomiques. Les coordonnées topocentriques sont corrigées de la parallaxe de la Lune depuis votre position réelle à la surface de la Terre, comme l'affichent certains logiciels d'astronomie tels que Sky Safari ; l'écart peut atteindre environ un degré. Cette option affecte uniquement la longitude et la latitude écliptiques, l'ascension droite, la déclinaison, ainsi que le signe du zodiaque et la demeure lunaire de la Lune ; elle ne change rien à l'altitude/azimut (déjà toujours calculés depuis votre position), ni au lever/passage au méridien/coucher, ni à la phase, l'âge ou l'illumination de la Lune.",
+
     'settings.prayerHeading': 'Horaires de prière',
     'settings.fajrAngleLabel': "Angle du Fajr (sous l'horizon)",
     'settings.asrMethodLabel': "École de calcul de l'Asr",

@@ -152,6 +152,17 @@ export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   const isAr = lang !== 'fr'
   const daySuffix = i18n.t('moon.daySuffix', lang)
   const kmSuffix = i18n.t('moon.kmSuffix', lang)
+  // لاحقة توضّح الإطار الفعلي المعروض حاليا (جيومركزي/طوبوغرافي - راجع settings.moonFrame* في
+  // i18n.js وmoonCoordFrame في app.js/engine.js) على عناوين الأقسام الثلاثة المتأثرة بالخيار
+  // فقط (البروجي، البرج والمنزلة، الاستوائي). الأفقي (الارتفاع/السمت) يبقى طوبوغرافيا دوما
+  // بداهة (محسوب أصلا من موقع الراصد) فلا تُضاف له هذه اللاحقة ولا يحمل id يستهدفها.
+  const frameSuffix = i18n.t(
+    m.coordFrame === 'topocentric' ? 'moon.frameTopocentricSuffix' : 'moon.frameGeocentricSuffix',
+    lang
+  )
+  setText(root, '#moonEclHeading', i18n.t('moon.eclGroupTitle', lang) + frameSuffix)
+  setText(root, '#moonZodiacHeading', i18n.t('common.zodiacGroupTitle', lang) + frameSuffix)
+  setText(root, '#moonEqHeading', i18n.t('common.eqGroupTitle', lang) + frameSuffix)
   setByDataF(root, 'moon.ecl.lon', format.formatDMS(m.ecliptic.longitudeDeg))
   setByDataF(root, 'moon.ecl.lat', format.formatDMS(m.ecliptic.latitudeDeg, { showPlus: true }))
   setByDataF(root, 'moon.eq.ra', format.formatHMS(format.normalizeDeg360(m.equatorial.rightAscensionDeg) / 15))

@@ -36,8 +36,13 @@ export const DEFAULT_LOCATION = {
  * @param {Date} [nowUtc] - اللحظة المطلوبة (افتراضيا الآن)
  * @param {object} [prayerSettings] - إعدادات مواقيت الصلاة (اختياري، انظر DEFAULT_PRAYER_SETTINGS في prayerTimes.js)
  * @param {'kuwaiti'|'ummalqura'|'astronomical'} [hijriMethod] - طريقة حساب التقويم الهجري (انظر hijri.js)
+ * @param {'geocentric'|'topocentric'} [moonCoordFrame] - اصطلاح طول/عرض/استواء القمر المعروض
+ *   (البروجي والاستوائي، وبالتبعية البرج/المنزلة المشتقان منه) - جيومركزي افتراضيا (الاصطلاح
+ *   الفلكي/التقويمي المعتاد)، أو طوبوغرافي (كما يُرى فعلا من موقع المراقب، يطابق ما تعرضه
+ *   برامج الرصد كـSky Safari). لا يمس هذا أبدا الإحداثيات الأفقية (أفقية بطبيعتها دائما)، ولا
+ *   الشروق/العبور/الغروب، ولا الطور/العمر/المطال (طلب المستخدم: انظر الشرح في moon.js).
  */
-export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), prayerSettings = {}, hijriMethod = 'kuwaiti') {
+export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), prayerSettings = {}, hijriMethod = 'kuwaiti', moonCoordFrame = 'geocentric') {
   const { latDeg, lonEastDeg, observerTime, gnomonCm = 60 } = location
 
   const jdUT = julian.DateToJD(nowUtc) // لليوم الجولياني بالتوقيت العالمي (للوقت النجمي والأفقي)
@@ -120,23 +125,34 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
 
   // ---------------- القمر ----------------
   const moonData = moonModule.moonEclipticAndEquatorial(jde)
-  // تصحيح متوازي السمت الموضعي (parallax، فصل ٤٠ ميوس) خاص بالإحداثيات *الأفقية* فقط - انظر
-  // التعليق المفصّل في moon.js (topocentricEquatorial). الإحداثيات الاستوائية المعروضة أدناه
-  // (moon.equatorial) تبقى جيومركزية كما هي عمدا، وكذلك الشروق/العبور/الغروب (moonRTS) والطور.
+  // تصحيح متوازي السمت الموضعي (parallax، فصل ٤٠ ميوس) ضروري دائما للإحداثيات *الأفقية* (لا
+  // خيار هنا - انظر التعليق المفصّل في moon.js). الإحداثيات البروجية/الاستوائية المعروضة
+  // (moon.ecliptic/moon.equatorial، وبالتبعية moon.zodiac/moon.manzil) تتبع بدلا عن ذلك اختيار
+  // moonCoordFrame أعلاه (جيومركزي افتراضيا، كالعادة الفلكية/التقويمية؛ أو طوبوغرافي كما تُرى
+  // فعلا من موقع المراقب) - وتبقى الشروق/العبور/الغروب (moonRTS) والطور/العمر/المطال (moonPhase)
+  // جيومركزية دائما بصرف النظر عن هذا الاختيار (لا معنى لتطويبها، ولمطابقة الشمس التي تُحسب
+  // جيومركزية دوما أيضا - انظر نفس التعليق في moon.js).
   const moonTopoEq = moonModule.topocentricEquatorial(jdUT, moonData.eq, moonData.parallax, latDeg, lonEastDeg)
   const moonHz = moonModule.horizontalFromEquatorial(jdUT, moonTopoEq, latDeg, lonEastDeg)
   const moonRTS = moonModule.moonRiseTransitSet(localParts.year, localParts.month, localParts.day, observerTime, latDeg, lonEastDeg)
   const moonPhase = moonModule.moonPhaseInfo(jde, sunEq, moonData.eq, moonData.range)
   const nextNewMoonLocal = timeutilModule.localPartsFromUTC(moonPhase.nextNewMoonUTCDate, observerTime)
 
-  const moonLonDeg = moonData.ecl.lon * R2D
+  const moonIsTopocentric = moonCoordFrame === 'topocentric'
+  const moonEqUsed = moonIsTopocentric ? moonTopoEq : moonData.eq
+  const moonEclUsed = moonIsTopocentric
+    ? moonModule.topocentricEcliptic(moonTopoEq, moonData.trueObliquity)
+    : moonData.ecl
+
+  const moonLonDeg = moonEclUsed.lon * R2D
   const moonSiderealLonDeg = formatModule.normalizeDeg360(moonLonDeg - ayanamsaDeg)
   const moonZodiac = zodiacModule.zodiacSignInfo(moonSiderealLonDeg)
   const moonManzil = zodiacModule.manzilInfo(moonSiderealLonDeg)
 
   const moon = {
-    ecliptic: { longitudeDeg: moonLonDeg, latitudeDeg: moonData.ecl.lat * R2D, distanceKm: moonData.range },
-    equatorial: { rightAscensionDeg: moonData.eq.ra * R2D, declinationDeg: moonData.eq.dec * R2D },
+    coordFrame: moonCoordFrame,
+    ecliptic: { longitudeDeg: moonLonDeg, latitudeDeg: moonEclUsed.lat * R2D, distanceKm: moonData.range },
+    equatorial: { rightAscensionDeg: moonEqUsed.ra * R2D, declinationDeg: moonEqUsed.dec * R2D },
     horizontal: moonHz,
     riseTransitSet: moonRTS,
     elongationDeg: moonPhase.elongationDeg,

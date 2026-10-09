@@ -37,7 +37,26 @@ export function moonEclipticAndEquatorial (jde) {
   const ecl = { lon: lonApparent, lat: geo.lat, range: geo.range }
   const eq = new coordLib.Ecliptic(lonApparent, geo.lat).toEquatorial(trueObliquity)
   const parallax = moonposition.parallax(geo.range)
-  return { ecl, eq: { ra: eq.ra, dec: eq.dec }, range: geo.range, parallax }
+  // trueObliquity (الميل الكلي الحقيقي) يُرجَع هنا أيضا لإعادة استعماله في topocentricEcliptic
+  // أدناه (تحويل الإحداثيات الطوبوغرافية نفسها إلى بروجية) بلا إعادة حساب nutation من جديد.
+  return { ecl, eq: { ra: eq.ra, dec: eq.dec }, range: geo.range, parallax, trueObliquity }
+}
+
+/**
+ * يحوّل الإحداثيات الاستوائية *الطوبوغرافية* (من topocentricEquatorial أعلاه) إلى إحداثيات
+ * بروجية طوبوغرافية (طول/عرض كما تُرى فعلا من موقع المراقب، لا من مركز الأرض) - دوران بزاوية
+ * الميل الكلي فقط (R2D أدناه)، فهو نفس تحويل استوائي←بروجي المعتاد تماما (لا علاقة له بالمسافة
+ * أو بمتوازي السمت) سواء طُبِّق على إحداثيات جيومركزية أو طوبوغرافية. يُستعمل هذا حين يختار
+ * المستخدم من الإعدادات عرض "طول/عرض القمر" طوبوغرافيا بدل الجيومركزي الافتراضي (انظر
+ * moonCoordFrame في engine.js) - لمطابقة ما تعرضه برامج الرصد كـSky Safari، على حساب الخروج عن
+ * الاصطلاح الفلكي/التقويمي المعتاد (جيومركزي) المستعمل في بقية التطبيق.
+ * @param {{ra:number, dec:number}} topoEq - الإحداثيات الاستوائية الطوبوغرافية (راديان)
+ * @param {number} trueObliquity - الميل الكلي الحقيقي عند نفس اللحظة (من moonEclipticAndEquatorial)
+ * @returns {{lon:number, lat:number}} الطول/العرض البروجيان الطوبوغرافيان (راديان)
+ */
+export function topocentricEcliptic (topoEq, trueObliquity) {
+  const e = new coordLib.Equatorial(topoEq.ra, topoEq.dec).toEcliptic(trueObliquity)
+  return { lon: e.lon, lat: e.lat }
 }
 
 /**
@@ -246,6 +265,7 @@ export function moonPhaseInfo (jde, sunEq, moonEq, moonRangeKm) {
 export default {
   moonEclipticAndEquatorial,
   topocentricEquatorial,
+  topocentricEcliptic,
   horizontalFromEquatorial,
   moonRiseTransitSet,
   angularSeparationDeg,
