@@ -361,6 +361,14 @@ const MAX_SEARCH_DAYS = 10
  * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} location
  * @param {Date} [nowUtc]
  */
+/** رقم اليوم المدني (civilJDN) المحلي عند لحظة UTC ومنطقة مراقب معيّنين - نفس التعريف
+ * المستعمل لبناء أيام المسح (days[].civilJDN أعلاه)، فيصلح لمطابقة لحظة بعينها (عادة "الآن"
+ * عند طلب قراءة صوتية) مع يوم بعينه من أيام مسح سابق - انظر engine.findCrescentDayForMoment. */
+export function localCivilJDN (utcDate, observerTime) {
+  const local = timeutilModule.localPartsFromUTC(utcDate, observerTime)
+  return hijriModule.civilJDNFromGregorian(local.year, local.month, local.day)
+}
+
 export function crescentSurvey (location, nowUtc = new Date()) {
   const { latDeg, lonEastDeg, observerTime } = location
   const jdeNow = julian.DateToJDE(nowUtc)
@@ -431,5 +439,6 @@ export default {
   odehVisible,
   bestTimeDate,
   crescentSurveyDay,
-  crescentSurvey
+  crescentSurvey,
+  localCivilJDN
 }

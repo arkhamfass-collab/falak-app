@@ -214,4 +214,22 @@ export function computeCrescentSurvey (location = DEFAULT_LOCATION, nowUtc = new
   return crescentVisibilityModule.crescentSurvey(location, nowUtc)
 }
 
-export default { computeAll, computeCrescentSurvey, DEFAULT_LOCATION }
+/**
+ * يُجري مسح تحري الهلال حول اللحظة المُعطاة، ثم يبحث فيه عن اليوم المطابق لنفس تلك اللحظة (بمطابقة
+ * اليوم المدني المحلي) - خاص بتغذية القراءة الصوتية (reader.js) ببيانات تحري الهلال تحديدا حين
+ * "الآن" يقع فعلا ضمن نافذة المسح (من يوم الاقتران إلى ثلاثة أيام بعد يوم الرؤية، أو حتى نهاية
+ * نافذة البحث إن لم يتحقق اتفاق)، أو null حين "الآن" خارج تلك النافذة - فلا تُضاف أي بيانات
+ * تحرٍّ للقراءة الصوتية في تلك الحالة، ويبقى نصها كما كان قبل إضافة هذه الميزة تماما (طلب المستخدم).
+ * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} [location]
+ * @param {Date} [nowUtc]
+ * @returns {{survey:object, day:object, dayIndex:number}|null}
+ */
+export function findCrescentDayForMoment (location = DEFAULT_LOCATION, nowUtc = new Date()) {
+  const survey = crescentVisibilityModule.crescentSurvey(location, nowUtc)
+  const todayJDN = crescentVisibilityModule.localCivilJDN(nowUtc, location.observerTime)
+  const dayIndex = survey.days.findIndex((d) => d.civilJDN === todayJDN)
+  if (dayIndex === -1) return null
+  return { survey, day: survey.days[dayIndex], dayIndex }
+}
+
+export default { computeAll, computeCrescentSurvey, findCrescentDayForMoment, DEFAULT_LOCATION }

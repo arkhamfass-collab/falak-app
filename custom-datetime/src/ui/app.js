@@ -682,10 +682,29 @@ function currentSpeechOptions () {
   }
 }
 
+// تحري الهلال في نص القراءة الصوتية: يُضاف فقط حين تقع لحظة القراءة فعليا ضمن نافذة المسح (من
+// مساء يوم الاقتران إلى ثلاثة أيام بعد يوم الرؤية) - فتُقرأ بيانات ذلك اليوم تحديدا بصرف النظر
+// عن كونه يوم الاقتران أو يوم الرؤية أو أحد أيام التكرار الثلاثة بعده؛ وخارج هذه الأيام يبقى نص
+// القراءة كما كان تماما قبل إضافة الميزة (بلا أي ذكر لتحري الهلال إطلاقا) - طلب المستخدم صراحة.
+// المسح أثقل نسبيا من computeAll (انظر تعليق computeCrescentSurvey في engine.js) فلا يُحسب هنا
+// إلا عند بناء نص القراءة فعليا (ضغط الزر، أو كل جدولة نصف ساعة) لا كل ثانية ضمن tick().
+//
+// خاص بهذه النسخة (custom-datetime): يُستعمل currentNowUtc() بدل new Date() مباشرة، حتى تَصدُق
+// مطابقة "الآن" مع أيام المسح على اللحظة المُجمَّدة المختارة (وضع "تاريخ ووقت محدد") تماما كبقية
+// حسابات هذه النسخة، لا على الوقت الحقيقي الجاري بصرف النظر عن التجميد.
+function buildFullNarrationText () {
+  if (!lastResult) return ''
+  let text = reader.buildNarrationScript(lastResult, localPartsFn, state.language)
+  const found = engine.findCrescentDayForMoment(currentLocation(), currentNowUtc())
+  const crescentText = reader.buildCrescentNarration(found, localPartsFn, state.language)
+  if (crescentText) text += '\n\n' + crescentText
+  return text
+}
+
 function speakNow () {
   if (!lastResult) return
   const statusEl = document.getElementById('readerStatus')
-  const text = reader.buildNarrationScript(lastResult, localPartsFn, state.language)
+  const text = buildFullNarrationText()
   statusEl.textContent = i18n.t('status.reading', state.language)
   reader.speak(text, currentSpeechOptions())
     .then(() => { statusEl.textContent = i18n.t('status.readDone', state.language) })
@@ -717,7 +736,7 @@ function isWithinAutoReadWindow () {
 function startAutoReading () {
   if (stopHourlyReadings) return
   stopHourlyReadings = reader.scheduleHourlyReadings(
-    () => reader.buildNarrationScript(lastResult, localPartsFn, state.language),
+    () => buildFullNarrationText(),
     (text) => {
       if (!isWithinAutoReadWindow()) return Promise.resolve()
       return reader.speak(text, currentSpeechOptions()).catch(() => {})

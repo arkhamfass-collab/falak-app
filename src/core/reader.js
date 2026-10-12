@@ -605,6 +605,135 @@ export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
   return lang === 'fr' ? buildNarrationScriptFrench(r, localPartsFn) : buildNarrationScriptArabic(r, localPartsFn)
 }
 
+// ------------------------- قراءة تحري الهلال (أيام المسح فقط) -------------------------
+// طلب المستخدم: تُضاف بيانات تحري الهلال إلى القراءة الصوتية فقط حين تقع لحظة القراءة فعليا ضمن
+// نافذة المسح (من مساء يوم الاقتران إلى ثلاثة أيام بعد يوم الرؤية) - فتُقرأ بيانات ذلك اليوم
+// تحديدا (لو كان يوم الاقتران، أو اليوم التالي، أو يوم الرؤية، أو أحد أيام التكرار الثلاثة بعده)،
+// وخارج هذه الأيام يبقى نص القراءة كما كان تماما قبل إضافة الميزة (بلا أي ذكر لتحري الهلال) -
+// لذا هاتان الدالتان تُستدعيان من app.js فقط حين engine.findCrescentDayForMoment تُعيد نتيجة غير
+// null، ويُضاف ناتجهما كقسم إضافي منفصل بعد نص buildNarrationScript العادي، لا بدلا منه.
+
+/** يبني فقرة "تحري الهلال" للقراءة الصوتية عربيا، ليوم بعينه من مسح تحري الهلال.
+ * @param {{survey:object, day:object, dayIndex:number}} found - ناتج engine.findCrescentDayForMoment
+ * @param {(utcDate:Date)=>object} localPartsFn
+ */
+export function buildCrescentNarrationArabic (found, localPartsFn) {
+  const { survey, day, dayIndex } = found
+  const g = day.gregorian
+  const dateWords = `${arabicNumberToWords(g.day)} ${format.gregorianMonthNameArabic(g.month)} سنة ${arabicNumberToWords(g.year)}`
+
+  let roleText
+  if (dayIndex === 0) roleText = 'وهو يوم الاقتران الفلكي'
+  else if (day.isFrozenRepeat) roleText = 'وتُكرَّر فيه بيانات يوم الرؤية'
+  else if (dayIndex === survey.sightingDayIndex) roleText = 'وهو يوم الرؤية، إذ اتفق فيه معيارا يالوب وعودة معا على إمكان الرؤية'
+  else roleText = 'ضمن أيام تحري رؤية الهلال'
+
+  let body = `أما تحري رؤية الهلال، فهذه بياناته ليوم ${dateWords}، ${roleText}. `
+
+  if (day.status === 'noSunset') {
+    return body + 'ولم تغرب الشمس هذا اليوم عند موقعكم، فتعذّر حساب التحري له.'
+  }
+
+  const s = day.snapshots.sunset
+  body +=
+    `عند الغروب، أي ${dateToClockWords(day.sunsetDate, localPartsFn)}: عمر الهلال ${hoursDecimalToArabicDuration(s.ageHours)}، ` +
+    `ومكثه بعد الغروب ${s.lagMinutes != null ? arabicCountedNoun(Math.round(s.lagMinutes), NOUN_FORMS.minute) : 'غير متحقق، إذ يغرب القمر قبل الشمس أو معها'}، ` +
+    `وارتفاعه ${dmsToArabicWords(s.moonAltitudeDeg)}، واستطالته عن الشمس ${dmsToArabicWords(s.elongationDeg)}، ` +
+    `ونسبة النور فيه ${Math.round(s.illuminatedFraction * 100)} بالمئة، وفرق سمته عن الشمس ${dmsToArabicWords(s.dazDeg)}. `
+
+  const s5 = day.snapshots.sunMinus5
+  if (s5) {
+    body +=
+      `وعند كون الشمس خمس درجات تحت الأفق، أي ${dateToClockWords(day.sun5Date, localPartsFn)}: ` +
+      `يكون ارتفاع القمر ${dmsToArabicWords(s5.moonAltitudeDeg)}، واستطالته ${dmsToArabicWords(s5.elongationDeg)}. `
+  }
+
+  if (day.yallop && day.odeh && day.bestTime) {
+    const yVisible = day.yallop.visible ? 'مرئي' : 'غير مرئي'
+    const oVisible = day.odeh.visible ? 'مرئي' : 'غير مرئي'
+    body +=
+      `وعند الوقت الأمثل لتقييم المعيارين، أي ${dateToClockWords(day.bestTime, localPartsFn)}: ` +
+      `نتيجة معيار يالوب هي المنطقة ${day.yallop.zone} بقيمة ${day.yallop.q.toFixed(3)}، أي ${yVisible}، ` +
+      `ونتيجة معيار عودة هي المنطقة ${day.odeh.zone} بقيمة ${day.odeh.v.toFixed(2)}، أي ${oVisible}. `
+  } else {
+    body += 'ويغرب القمر هذا المساء قبل غروب الشمس أو معه، فلا نافذة رصد فيه، ولم تُحسب نتيجتا المعيارين. '
+  }
+
+  if (survey.fatihDetermined) {
+    const fg = survey.fatihGregorian
+    body += `ويكون يوم الفاتح، أي غرة الشهر الجديد، يوم ${arabicNumberToWords(fg.day)} ${format.gregorianMonthNameArabic(fg.month)} سنة ${arabicNumberToWords(fg.year)}.`
+  } else {
+    body += 'ولم تتحقق بعد رؤية متفق عليها بين المعيارين ضمن نافذة المسح الحالية.'
+  }
+
+  return body
+}
+
+/** نظير buildCrescentNarrationArabic بالفرنسية */
+export function buildCrescentNarrationFrench (found, localPartsFn) {
+  const { survey, day, dayIndex } = found
+  const g = day.gregorian
+  const dateWords = `${frenchNumberToWords(g.day)} ${format.gregorianMonthNameFrench(g.month)} ${frenchNumberToWords(g.year)}`
+
+  let roleText
+  if (dayIndex === 0) roleText = 'le jour de la conjonction astronomique'
+  else if (day.isFrozenRepeat) roleText = 'un jour où les données du jour de visibilité sont répétées'
+  else if (dayIndex === survey.sightingDayIndex) roleText = "le jour de visibilité, où les deux critères, Yallop et Odeh, se sont accordés sur la possibilité de voir le croissant"
+  else roleText = "l'un des jours de l'analyse de visibilité du croissant"
+
+  let body = `Quant à l'observation du croissant lunaire, voici les données du ${dateWords}, ${roleText}. `
+
+  if (day.status === 'noSunset') {
+    return body + "Le Soleil ne s'est pas couché ce jour-là à votre position, l'analyse est donc impossible pour ce jour."
+  }
+
+  const s = day.snapshots.sunset
+  body +=
+    `Au coucher du soleil, à ${dateToClockWordsFrench(day.sunsetDate, localPartsFn)} : l'âge du croissant est de ${hoursDecimalToFrenchDuration(s.ageHours)}, ` +
+    `son décalage après le coucher du soleil est de ${s.lagMinutes != null ? frenchCountedNoun(Math.round(s.lagMinutes), FRENCH_NOUN_FORMS.minute) : 'non applicable, car la Lune se couche avant le Soleil ou en même temps'}, ` +
+    `sa hauteur est de ${dmsToFrenchWords(s.moonAltitudeDeg)}, son élongation par rapport au Soleil est de ${dmsToFrenchWords(s.elongationDeg)}, ` +
+    `son taux d'éclairement est de ${Math.round(s.illuminatedFraction * 100)} pour cent, et la différence d'azimut avec le Soleil est de ${dmsToFrenchWords(s.dazDeg)}. `
+
+  const s5 = day.snapshots.sunMinus5
+  if (s5) {
+    body +=
+      `Et quand le Soleil est à cinq degrés sous l'horizon, soit à ${dateToClockWordsFrench(day.sun5Date, localPartsFn)} : ` +
+      `la hauteur de la Lune est de ${dmsToFrenchWords(s5.moonAltitudeDeg)}, et son élongation de ${dmsToFrenchWords(s5.elongationDeg)}. `
+  }
+
+  if (day.yallop && day.odeh && day.bestTime) {
+    const yVisible = day.yallop.visible ? 'visible' : 'non visible'
+    const oVisible = day.odeh.visible ? 'visible' : 'non visible'
+    body +=
+      `Et au moment optimal d'évaluation des critères, à ${dateToClockWordsFrench(day.bestTime, localPartsFn)} : ` +
+      `le résultat du critère de Yallop est la zone ${day.yallop.zone} avec une valeur de ${day.yallop.q.toFixed(3)}, soit ${yVisible}, ` +
+      `et le résultat du critère d'Odeh est la zone ${day.odeh.zone} avec une valeur de ${day.odeh.v.toFixed(2)}, soit ${oVisible}. `
+  } else {
+    body += "La Lune se couche ce soir avant le coucher du soleil ou en même temps, il n'y a donc pas de fenêtre d'observation, et les deux critères n'ont pas été calculés. "
+  }
+
+  if (survey.fatihDetermined) {
+    const fg = survey.fatihGregorian
+    body += `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, sera donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
+  } else {
+    body += "Aucune visibilité confirmée par les deux critères n'a encore été trouvée dans la fenêtre d'analyse actuelle."
+  }
+
+  return body
+}
+
+/**
+ * يبني فقرة تحري الهلال باللغة المطلوبة، أو نصا فارغا إن كانت found تساوي null (أي أن لحظة
+ * القراءة تقع خارج نافذة المسح) - نقطة الدخول الموحَّدة التي يستعملها app.js.
+ * @param {{survey:object, day:object, dayIndex:number}|null} found
+ * @param {(utcDate:Date)=>object} localPartsFn
+ * @param {'ar'|'fr'} [lang='ar']
+ */
+export function buildCrescentNarration (found, localPartsFn, lang = 'ar') {
+  if (!found) return ''
+  return lang === 'fr' ? buildCrescentNarrationFrench(found, localPartsFn) : buildCrescentNarrationArabic(found, localPartsFn)
+}
+
 // ------------------------- النطق عبر Web Speech API (متصفح فقط) -------------------------
 
 // الحد الأقصى الآمن لطول القطعة الواحدة المُرسَلة لمحرك النطق في نداء speak() واحد.
@@ -794,6 +923,9 @@ export default {
   buildNarrationScriptArabic,
   buildNarrationScriptFrench,
   buildNarrationScript,
+  buildCrescentNarrationArabic,
+  buildCrescentNarrationFrench,
+  buildCrescentNarration,
   splitForSpeech,
   speak,
   speakArabic,
