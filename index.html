@@ -38,6 +38,7 @@
   <button class="tab-btn" data-tab="tab-moon" role="tab" aria-selected="false" data-i18n="tabs.moon">القمر</button>
   <button class="tab-btn" data-tab="tab-sidereal" role="tab" aria-selected="false" data-i18n="tabs.sidereal">الوقت النجمي</button>
   <button class="tab-btn" data-tab="tab-qibla" role="tab" aria-selected="false" data-i18n="tabs.qibla">القبلة</button>
+  <button class="tab-btn" data-tab="tab-crescent" role="tab" aria-selected="false" data-i18n="tabs.crescent">تحري الهلال</button>
 </nav>
 
 <main>
@@ -190,6 +191,24 @@
       <div class="kv"><span data-i18n="qibla.shadowTowardLabel">وقت اتجاه الظل نحو القبلة</span><b data-f="qibla.shadowToward">—</b></div>
     </div>
     <p class="hint" data-i18n="qibla.hint">سمت القبلة محسوب بالصيغة الكروية الدقيقة (دائرة عظمى)، لا بخط مستقيم على خريطة مسطَّحة. محاذاة الظل تعني أن ظل أي عمود عمودي يشير تماما نحو القبلة في تلك اللحظة؛ ومحاذاة الشمس تعني أنها هي نفسها في اتجاه القبلة تماما. قد لا تقع إحداهما أو كلتاهما في بعض الأيام بحسب خط العرض والفصل.</p>
+  </section>
+
+  <section id="tab-crescent" class="tab-panel">
+    <h2 class="panel-title" data-i18n="crescent.panelTitle">تحري الهلال (معيارا يالوب وعودة)</h2>
+
+    <button id="btnRefreshCrescent" class="action-btn" data-i18n="crescent.refreshBtn">🔭 تحري الهلال الآن</button>
+
+    <div class="data-group">
+      <h3 data-i18n="crescent.summaryGroupTitle">ملخص المسح</h3>
+      <div class="kv"><span data-i18n="crescent.conjunctionLabel">لحظة الاقتران (جيومركزي) بالتوقيت المحلي</span><b data-f="crescent.conjunctionLocal">—</b></div>
+      <div class="kv"><span data-i18n="crescent.fatihLabel">يوم الفاتح (غرة الشهر الجديد)</span><b data-f="crescent.fatih">—</b></div>
+    </div>
+
+    <p class="hint" id="crescentStatusHint">—</p>
+
+    <div id="crescentDaysContainer" class="crescent-days"></div>
+
+    <p class="hint" data-i18n="crescent.hint">يبدأ المسح مساء يوم الاقتران الفلكي (الجيومركزي)، ويستمر إلى ثلاثة أيام بعد "يوم الرؤية"...</p>
   </section>
 
 </main>

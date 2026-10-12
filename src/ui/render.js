@@ -192,6 +192,113 @@ export function renderSidereal (root, r) {
   setByDataF(root, 'sid.lst', format.formatHMS(r.sidereal.lstHours))
 }
 
+// ------------------------- تحري الهلال (معيارا يالوب وعودة) -------------------------
+// بخلاف بقية دوال العرض أعلاه، لا تُستدعى من renderAll/tick (المسح أثقل حسابا وغير متعلق
+// بتبويب "الآن" المستمر) - يستدعيها app.js مباشرة عند فتح تبويب "تحري الهلال" أو الضغط على
+// زر التحديث فيه (انظر computeAndRenderCrescent في app.js). عدد الأيام متغيّر (من يوم إلى
+// نحو ١٣ يوما) فلا يصلح لها قالب HTML ثابت كبقية التبويبات - تُبنى بطاقات الأيام ديناميكيا هنا.
+
+function kvRow (label, value, rtl = false) {
+  return `<div class="kv"><span>${label}</span><b${rtl ? ' class="rtl-value"' : ''}>${value}</b></div>`
+}
+
+/** بطاقة يوم واحد من المسح - نص HTML كامل (لا عناصر DOM بحقول data-f ثابتة كبقية التبويبات،
+ * لتغيّر عدد الأيام من مسح لآخر) */
+function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
+  const isAr = lang !== 'fr'
+  const g = day.gregorian
+  const dateStr = `${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
+
+  let badges = ''
+  if (idx === 0) badges += `<span class="crescent-badge">${i18n.t('crescent.badgeConjunctionDay', lang)}</span>`
+  if (idx === survey.sightingDayIndex) badges += `<span class="crescent-badge badge-sighting">${i18n.t('crescent.badgeSightingDay', lang)}</span>`
+  if (day.isFrozenRepeat) badges += `<span class="crescent-badge badge-frozen">${i18n.t('crescent.badgeFrozenRepeat', lang)}</span>`
+
+  let body
+  if (day.status === 'noSunset') {
+    body = `<p class="hint">${i18n.t('crescent.statusNoSunset', lang)}</p>`
+  } else {
+    const s = day.snapshots.sunset
+    const s5 = day.snapshots.sunMinus5
+    body = ''
+    body += `<div class="crescent-section-title">${i18n.t('crescent.atSunsetTitle', lang, { time: fmtClockOrDash(day.sunsetDate, localPartsFn) })}</div>`
+    body += '<div class="crescent-kv-grid">'
+    body += kvRow(i18n.t('crescent.ageLabel', lang), s.ageHours.toFixed(1) + i18n.t('crescent.hourSuffix', lang), isAr)
+    body += kvRow(i18n.t('crescent.lagLabel', lang),
+      s.lagMinutes != null ? s.lagMinutes.toFixed(1) + i18n.t('crescent.minuteSuffix', lang) : '—', isAr)
+    body += kvRow(i18n.t('crescent.moonAltitudeLabel', lang), format.formatDMS(s.moonAltitudeDeg, { showPlus: true }))
+    body += kvRow(i18n.t('crescent.elongationLabel', lang), format.formatDMS(s.elongationDeg))
+    body += kvRow(i18n.t('crescent.illumLabel', lang), (s.illuminatedFraction * 100).toFixed(2) + '%')
+    body += kvRow(i18n.t('crescent.dazLabel', lang), format.formatDMS(s.dazDeg, { showPlus: true }))
+    body += '</div>'
+
+    if (s5) {
+      body += `<div class="crescent-section-title">${i18n.t('crescent.atSun5Title', lang, { time: fmtClockOrDash(day.sun5Date, localPartsFn) })}</div>`
+      body += '<div class="crescent-kv-grid">'
+      body += kvRow(i18n.t('crescent.moonAltitudeLabel', lang), format.formatDMS(s5.moonAltitudeDeg, { showPlus: true }))
+      body += kvRow(i18n.t('crescent.elongationLabel', lang), format.formatDMS(s5.elongationDeg))
+      body += '</div>'
+    }
+
+    if (day.yallop && day.odeh && day.bestTime) {
+      const yVisible = i18n.t(day.yallop.visible ? 'crescent.visibleYes' : 'crescent.visibleNo', lang)
+      const oVisible = i18n.t(day.odeh.visible ? 'crescent.visibleYes' : 'crescent.visibleNo', lang)
+      body += `<div class="crescent-section-title">${i18n.t('crescent.bestTimeTitle', lang, { time: fmtClockOrDash(day.bestTime, localPartsFn) })}</div>`
+      body += '<div class="crescent-kv-grid">'
+      body += kvRow(i18n.t('crescent.yallopLabel', lang),
+        i18n.t('crescent.criterionResultTemplate', lang, { zone: day.yallop.zone, score: day.yallop.q.toFixed(3), visible: yVisible }), isAr)
+      body += kvRow(i18n.t('crescent.odehLabel', lang),
+        i18n.t('crescent.criterionResultTemplate', lang, { zone: day.odeh.zone, score: day.odeh.v.toFixed(2), visible: oVisible }), isAr)
+      body += '</div>'
+    } else {
+      body += `<p class="hint">${i18n.t('crescent.noEveningWindowHint', lang)}</p>`
+    }
+  }
+
+  const cardClasses = ['crescent-day']
+  if (day.bothVisible) cardClasses.push('both-visible')
+  if (day.isFrozenRepeat) cardClasses.push('frozen')
+
+  return `<article class="${cardClasses.join(' ')}">
+    <header class="crescent-day-head">
+      <span class="crescent-day-date">${dateStr}</span>
+      <span class="crescent-day-badges">${badges}</span>
+    </header>
+    ${body}
+  </article>`
+}
+
+/** يُرسم مسح تحري الهلال الكامل (من engine.computeCrescentSurvey) - يُستدعى عند فتح التبويب
+ * أو الضغط على زر التحديث، لا كل ثانية (انظر التعليق أعلى الكتلة) */
+export function renderCrescentSurvey (root, survey, localPartsFn, lang = 'ar') {
+  const isAr = lang !== 'fr'
+  setByDataF(root, 'crescent.conjunctionLocal', fmtDateAndClock(survey.conjunction.utcDate, localPartsFn))
+
+  let fatihText
+  if (survey.fatihDetermined) {
+    const g = survey.fatihGregorian
+    fatihText = `${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
+  } else {
+    fatihText = i18n.t('crescent.fatihNotFoundText', lang)
+  }
+  setByDataF(root, 'crescent.fatih', fatihText, { rtl: !survey.fatihDetermined && isAr })
+
+  let summary
+  if (survey.fatihDetermined) {
+    const sd = survey.days[survey.sightingDayIndex].gregorian
+    const sightDateStr = `${sd.day} ${format.gregorianMonthName(sd.month, lang)} ${sd.year}`
+    summary = i18n.t('crescent.statusSummaryTemplate', lang, { sightDate: sightDateStr, fatihDate: fatihText })
+  } else {
+    summary = i18n.t('crescent.statusSummaryNotFound', lang)
+  }
+  setText(root, '#crescentStatusHint', summary)
+
+  const container = root.querySelector('#crescentDaysContainer')
+  if (container) {
+    container.innerHTML = survey.days.map((day, idx) => crescentDayCardHtml(day, idx, survey, localPartsFn, lang)).join('')
+  }
+}
+
 export function renderQibla (root, r, localPartsFn, lang = 'ar') {
   const q = r.qibla
   const isAr = lang !== 'fr'
@@ -238,6 +345,7 @@ export default {
   renderMoon,
   renderSidereal,
   renderQibla,
+  renderCrescentSurvey,
   renderPrayerHints,
   applyStaticLanguage,
   renderAll

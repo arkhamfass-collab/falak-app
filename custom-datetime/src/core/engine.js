@@ -19,6 +19,7 @@ import timeutilModule from './timeutil.js'
 import formatModule from './format.js'
 import qiblaModule from './qibla.js'
 import zodiacModule from './zodiac.js'
+import crescentVisibilityModule from './crescentVisibility.js'
 
 const R2D = 180 / Math.PI
 
@@ -201,4 +202,16 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   return { time, sun, moon, sidereal, prayerTimes, qibla, location }
 }
 
-export default { computeAll, DEFAULT_LOCATION }
+/**
+ * تحري الهلال (معيارا يالوب وعودة معا): مسح متعدد الأيام (انظر crescentVisibility.js للتفصيل
+ * الكامل) - حساب أثقل نسبيا من computeAll أعلاه (يفحص عادة ٢-٥ أيام، وقد يصل حتى ١٣ يوما في
+ * الحالات الحدّية)، فلا يُستدعى من computeAll نفسها (التي تُستدعى كل ثانية في tick()) بل
+ * دالة مستقلة تُستدعى فقط عند فتح تبويب "تحري الهلال" أو عند تغيير الموقع/التاريخ فيه.
+ * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} [location]
+ * @param {Date} [nowUtc] - أي لحظة قريبة من الاقتران المطلوب مسحه (يُحدَّد أقرب اقتران جيومركزي لها تلقائيا)
+ */
+export function computeCrescentSurvey (location = DEFAULT_LOCATION, nowUtc = new Date()) {
+  return crescentVisibilityModule.crescentSurvey(location, nowUtc)
+}
+
+export default { computeAll, computeCrescentSurvey, DEFAULT_LOCATION }

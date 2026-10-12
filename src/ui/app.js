@@ -202,6 +202,10 @@ function setLanguage (lang) {
   saveState()
   applyLanguage(lang)
   tick()
+  // تبويب تحري الهلال لا يُعاد حسابه كل ثانية (انظر computeAndRenderCrescent)، فتبديل اللغة لا
+  // يمر عليه عبر tick() أعلاه - إن كان قد حُسب من قبل فعلا، نُعيد رسمه فقط (بلا إعادة حساب) بنصوص
+  // اللغة الجديدة.
+  if (lastCrescentSurvey) render.renderCrescentSurvey(document, lastCrescentSurvey, localPartsFn, state.language)
 }
 
 // ------------------------- التبويبات -------------------------
@@ -215,8 +219,30 @@ function wireTabs () {
       btn.setAttribute('aria-selected', 'true')
       document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'))
       document.getElementById(btn.dataset.tab).classList.add('active')
+      if (btn.dataset.tab === 'tab-crescent') computeAndRenderCrescent(false)
     })
   })
+}
+
+// ------------------------- تحري الهلال (معيارا يالوب وعودة) -------------------------
+// مسح متعدد الأيام (انظر crescentVisibility.js/engine.computeCrescentSurvey) أثقل نسبيا من
+// computeAll المستدعاة كل ثانية في tick() - فلا يُستدعى من هناك، بل فقط هنا: عند أول فتح لتبويب
+// "تحري الهلال" (lazily)، أو عند الضغط على زر التحديث فيه، أو عند تغيّر الموقع/التوقيت فعليا
+// بحفظ الإعدادات وتبويب الهلال مفتوح حاليا (انظر saveSettingsFromForm).
+let lastCrescentSurvey = null
+let crescentComputedForKey = null
+
+function crescentCacheKey () {
+  const loc = currentLocation()
+  return `${loc.latDeg.toFixed(4)}|${loc.lonEastDeg.toFixed(4)}|${JSON.stringify(loc.observerTime)}`
+}
+
+function computeAndRenderCrescent (force) {
+  const key = crescentCacheKey()
+  if (!force && lastCrescentSurvey && crescentComputedForKey === key) return
+  lastCrescentSurvey = engine.computeCrescentSurvey(currentLocation(), new Date())
+  crescentComputedForKey = key
+  render.renderCrescentSurvey(document, lastCrescentSurvey, localPartsFn, state.language)
 }
 
 // ------------------------- قائمة المناطق الزمنية -------------------------
@@ -409,6 +435,11 @@ function saveSettingsFromForm () {
   closeSettingsModal()
   if (newLang !== state.language) setLanguage(newLang) // يطبّق الترجمة ويُعيد العرض بنفسه
   else tick()
+  // الموقع/التوقيت قد يتغيّران من هذه الاستمارة - إن كان تبويب "تحري الهلال" مفتوحا حاليا ومحسوبا
+  // من قبل، نُعيد حسابه فورا (لا ننتظر فتحا تاليا للتبويب) بدل ترك بيانات قديمة معروضة بصمت.
+  if (lastCrescentSurvey && document.getElementById('tab-crescent').classList.contains('active')) {
+    computeAndRenderCrescent(true)
+  }
 }
 
 // حقل نصي لعدد عشري قد يكون سالبا (خطوط الطول/العرض، الإزاحة الزمنية، زوايا الفجر/العشاء):
@@ -658,6 +689,8 @@ function wireEvents () {
 
   document.getElementById('btnTestVoice').addEventListener('click', testVoiceNow)
   document.getElementById('btnTestAdhan').addEventListener('click', testAdhanNow)
+
+  document.getElementById('btnRefreshCrescent').addEventListener('click', () => computeAndRenderCrescent(true))
 
   document.getElementById('btnSpeakNow').addEventListener('click', speakNow)
   document.getElementById('chkAutoRead').addEventListener('change', (e) => {
