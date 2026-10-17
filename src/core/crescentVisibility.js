@@ -364,18 +364,14 @@ export function crescentSurveyDay (localYear, localMonth, localDay, observerTime
 const MAX_SEARCH_DAYS = 10
 
 /**
- * يُجري المسح الكامل لتحري الهلال حول أقرب اقتران جيومركزي لـnowUtc، عند موقع مراقب معيّن.
+ * يُجري المسح الكامل لتحري الهلال حول أقرب اقتران جيومركزي لـnowUtc، عند موقع مراقب معيّن. تُستعمل
+ * دوما بلا شرط عند بناء نص القراءة الصوتية (reader.buildCrescentNarration عبر app.js) - كانت توجد
+ * هنا أيضا دالة localCivilJDN ودالة engine.findCrescentDayForMoment المبنية عليها، تشترطان تطابق
+ * اليوم المدني لـ"الآن" مع يوم بعينه ضمن أيام المسح قبل إضافة أي بيانات تحرٍّ للقراءة - حُذفتا
+ * كليا (طلب المستخدم: تُقرأ بيانات أقرب مسح كل يوم بلا شرط، تماما كـ"الاقتران القادم" العادي).
  * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} location
  * @param {Date} [nowUtc]
  */
-/** رقم اليوم المدني (civilJDN) المحلي عند لحظة UTC ومنطقة مراقب معيّنين - نفس التعريف
- * المستعمل لبناء أيام المسح (days[].civilJDN أعلاه)، فيصلح لمطابقة لحظة بعينها (عادة "الآن"
- * عند طلب قراءة صوتية) مع يوم بعينه من أيام مسح سابق - انظر engine.findCrescentDayForMoment. */
-export function localCivilJDN (utcDate, observerTime) {
-  const local = timeutilModule.localPartsFromUTC(utcDate, observerTime)
-  return hijriModule.civilJDNFromGregorian(local.year, local.month, local.day)
-}
-
 export function crescentSurvey (location, nowUtc = new Date()) {
   const { latDeg, lonEastDeg, observerTime } = location
   const jdeNow = julian.DateToJDE(nowUtc)
@@ -436,6 +432,5 @@ export default {
   odehVisible,
   bestTimeDate,
   crescentSurveyDay,
-  crescentSurvey,
-  localCivilJDN
+  crescentSurvey
 }
