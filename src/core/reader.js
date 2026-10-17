@@ -607,16 +607,20 @@ export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
 
 // ------------------------- قراءة تحري الهلال (كل أيام المسح دفعة واحدة) -------------------------
 // طلب المستخدم أولا: تُضاف بيانات تحري الهلال إلى القراءة الصوتية فقط حين تقع لحظة القراءة فعليا
-// ضمن نافذة المسح (من مساء يوم الاقتران إلى يوم الرؤية، بعد تضييق النافذة لاحقا - انظر رأس
-// crescentVisibility.js)، وخارج هذه الأيام يبقى نص القراءة كما كان تماما قبل إضافة الميزة (بلا
-// أي ذكر لتحري الهلال) - لذا هاتان الدالتان تُستدعيان من app.js فقط حين
-// engine.findCrescentDayForMoment تُعيد نتيجة غير null، ويُضاف ناتجهما كقسم إضافي منفصل بعد نص
-// buildNarrationScript العادي، لا بدلا منه (الشرط نفسه بلا تغيير - انظر findCrescentDayForMoment
-// في engine.js).
-// طلب المستخدم لاحقا تغيير *محتوى* القراءة: لا تُقرأ بيانات "اليوم الحالي" فقط (كما كانت)، بل
-// تُقرأ بيانات كل أيام المسح معا دفعة واحدة (من يوم الاقتران إلى يوم الرؤية) في كل مرة يُفتح فيها
-// هذا القسم أصلا - بادئة بتاريخ ووقت الاقتران نفسه (لم يكن يُقرأ من قبل إطلاقا)، ثم بيانات كل يوم
-// بالتتابع، ثم خاتمة واحدة فقط بيوم الفاتح في آخر القسم (لا تتكرر بعد كل يوم كما كانت).
+// ضمن نافذة المسح (من مساء يوم الاقتران إلى يوم الرؤية) - عبر بوابة findCrescentDayForMoment في
+// app.js/engine.js. ثم طلب المستخدم تغيير *محتوى* القراءة: لا تُقرأ بيانات "اليوم الحالي" فقط
+// (كما كانت)، بل كل أيام المسح معا دفعة واحدة - بادئة بتاريخ ووقت الاقتران، ثم كل يوم بالتتابع،
+// ثم خاتمة واحدة بيوم الفاتح في آخر القسم.
+// طلب المستخدم أخيرا (بعد تجربة فعلية): لا تُسكَت القراءة خارج أيام المسح، بل تُقرأ بيانات أقرب
+// مسح كل يوم - تماما كما تُقرأ بيانات "الاقتران القادم" (nextNewMoonSentence أعلاه) كل يوم بصرف
+// النظر عن اليوم الحالي، لا فقط يوم الاقتران نفسه. فحُذفت بوابة findCrescentDayForMoment من
+// engine.js كليا (كانت تُغلق القراءة في أغلب أيام الشهر بعد تضييق نافذة المسح لاحقا - انظر رأس
+// crescentVisibility.js)، وأصبحت هاتان الدالتان تُستدعيان من app.js دوما عند كل بناء لنص القراءة
+// (لا بشرط)، بـ survey = engine.computeCrescentSurvey(...) مباشرة - التي تُعيد دوما مسح أقرب
+// اقتران لـ"الآن" (سابقا كان أو تاليا)، فلا حاجة لبوابة أصلا. لذا صيغة جملة الاقتران الافتتاحية
+// (crescentConjunctionSentenceArabic/French) محايدة زمنيا عمدا (لا "كان"/"a eu lieu") لأن ذلك
+// الاقتران قد يكون ماضيا أو مستقبلا نسبة لـ"الآن" بالتساوي الآن (لا ماضيا حصرا كما كان الحال وحيدا
+// حين كانت البوابة تضمن وقوع "الآن" داخل نافذة المسح نفسها).
 
 /** الجملة الافتتاحية: تاريخ ووقت الاقتران (جيومركزي) بالتوقيتين العالمي والمحلي معا - على نسق
  * nextNewMoonSentence أعلاه (الاقتران *القادم* في قسم القمر العادي)، لكن لهذا الاقتران بعينه
@@ -632,7 +636,7 @@ function crescentConjunctionSentenceArabic (conjunction) {
     `${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)}، ` +
     `${hmsClockToArabicWords(l.hour, l.minute)} بتوقيتكم المحلي`
   return (
-    `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) كان يوم ${utcPart}، أي يوم ${localPart}. ` +
+    `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) يقع يوم ${utcPart}، أي يوم ${localPart}. ` +
     'وفيما يلي بياناته من يوم الاقتران إلى يوم الرؤية:'
   )
 }
@@ -697,13 +701,11 @@ function crescentFatihSentenceArabic (survey) {
 
 /** يبني فقرة "تحري الهلال" الكاملة للقراءة الصوتية عربيا: جملة افتتاحية بتاريخ ووقت الاقتران،
  * ثم بيانات كل أيام المسح (survey.days كاملة - من يوم الاقتران إلى يوم الرؤية) بالتتابع، ثم
- * خاتمة واحدة بيوم الفاتح. found.day/found.dayIndex (مطابقة "الآن" بيوم بعينه) لا تُستعملان هنا
- * إطلاقا - تُستعملان فقط كبوابة في app.js لتقرير هل يُضاف هذا القسم أصلا (انظر التعليق أعلى الكتلة).
- * @param {{survey:object, day:object, dayIndex:number}} found - ناتج engine.findCrescentDayForMoment
+ * خاتمة واحدة بيوم الفاتح - بصرف النظر تماما عن اليوم الحالي (لا بوابة، انظر التعليق أعلى الكتلة).
+ * @param {object} survey - ناتج engine.computeCrescentSurvey
  * @param {(utcDate:Date)=>object} localPartsFn
  */
-export function buildCrescentNarrationArabic (found, localPartsFn) {
-  const { survey } = found
+export function buildCrescentNarrationArabic (survey, localPartsFn) {
   const parts = [crescentConjunctionSentenceArabic(survey.conjunction)]
   survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceArabic(day, idx, survey, localPartsFn)) })
   parts.push(crescentFatihSentenceArabic(survey))
@@ -721,7 +723,7 @@ function crescentConjunctionSentenceFrench (conjunction) {
     `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
     `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
   return (
-    `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a eu lieu le ${utcPart}, soit le ${localPart}. ` +
+    `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a lieu le ${utcPart}, soit le ${localPart}. ` +
     "Voici les données de l'analyse, du jour de la conjonction au jour de visibilité :"
   )
 }
@@ -777,14 +779,13 @@ function crescentDaySentenceFrench (day, idx, survey, localPartsFn) {
 function crescentFatihSentenceFrench (survey) {
   if (survey.fatihDetermined) {
     const fg = survey.fatihGregorian
-    return `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, sera donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
+    return `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, est donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
   }
   return "Aucune visibilité confirmée par les deux critères n'a encore été trouvée dans la fenêtre d'analyse actuelle."
 }
 
 /** نظير buildCrescentNarrationArabic بالفرنسية */
-export function buildCrescentNarrationFrench (found, localPartsFn) {
-  const { survey } = found
+export function buildCrescentNarrationFrench (survey, localPartsFn) {
   const parts = [crescentConjunctionSentenceFrench(survey.conjunction)]
   survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceFrench(day, idx, survey, localPartsFn)) })
   parts.push(crescentFatihSentenceFrench(survey))
@@ -792,17 +793,17 @@ export function buildCrescentNarrationFrench (found, localPartsFn) {
 }
 
 /**
- * يبني فقرة تحري الهلال الكاملة (كل أيام المسح معا) باللغة المطلوبة، أو نصا فارغا إن كانت found
- * تساوي null (أي أن لحظة القراءة تقع خارج نافذة المسح) - نقطة الدخول الموحَّدة التي يستعملها
- * app.js. found نفسها تبقى بوابة الدخول فقط (null أو لا) - محتوى القراءة يُبنى من found.survey
- * كاملة، لا من found.day وحده.
- * @param {{survey:object, day:object, dayIndex:number}|null} found
+ * يبني فقرة تحري الهلال الكاملة (كل أيام المسح معا) باللغة المطلوبة - نقطة الدخول الموحَّدة التي
+ * يستعملها app.js، بتمرير survey = engine.computeCrescentSurvey(...) مباشرة دوما (بلا شرط، انظر
+ * التعليق أعلى الكتلة) لا غلاف found كما كان سابقا. تُعيد نصا فارغا فقط إن مُرِّر survey فارغ
+ * (undefined/null) دفاعا، وهو لا يقع عمليا إذ computeCrescentSurvey تُعيد نتيجة صالحة دوما.
+ * @param {object} survey
  * @param {(utcDate:Date)=>object} localPartsFn
  * @param {'ar'|'fr'} [lang='ar']
  */
-export function buildCrescentNarration (found, localPartsFn, lang = 'ar') {
-  if (!found) return ''
-  return lang === 'fr' ? buildCrescentNarrationFrench(found, localPartsFn) : buildCrescentNarrationArabic(found, localPartsFn)
+export function buildCrescentNarration (survey, localPartsFn, lang = 'ar') {
+  if (!survey) return ''
+  return lang === 'fr' ? buildCrescentNarrationFrench(survey, localPartsFn) : buildCrescentNarrationArabic(survey, localPartsFn)
 }
 
 // ------------------------- النطق عبر Web Speech API (متصفح فقط) -------------------------
@@ -903,6 +904,14 @@ function speakOneUtterance (text, opts) {
  * يُرفض نداء النطق كليا على بعض متصفحات أندرويد بسبب طول النص - انظر تعليق MAX_UTTERANCE_CHARS.
  * فشل أي قطعة يوقف ما تبقى منها فورا وتُرفض الـPromise الكلية بخطأ تلك القطعة.
  * لا تأثير لها في بيئة بلا `window` (مثل بيئة الاختبار في Node) - تُرجع Promise تُرفض بهدوء.
+ *
+ * تُلغي أولا أي نطق سابق لم ينته بعد (speechSynthesis.speaking أو .pending) قبل البدء: نداءا
+ * speak() يأتيان من مصدرين مختلفين بلا تنسيق بينهما (زر "قراءة الآن" اليدوي، والجدولة الآلية كل
+ * نصف ساعة في scheduleHourlyReadings أدناه)، وWeb Speech API تُراكم طابورا بدل استبداله - فلو
+ * تزامن نداءان (مثلا: ضغط الزر قريبا من حد نصف الساعة الذي تطلق القراءة الآلية عنده) يُنطَق
+ * النصان كلاهما متتاليين، وهذا يُسمَع كـ"تكرار القراءة بعد الانتهاء مباشرة" لأن محتوى النصين
+ * متقارب جدا عادة (كلاهما من buildFullNarrationText بفارق ثوان). الإلغاء هنا يضمن أن كل نداء
+ * speak() جديد يبدأ طابورا نظيفا خاصا به دوما - فيُستبدل أي نطق قديم متبقٍّ، ولا تتراكم القطع.
  * @param {string} text
  * @param {{lang?:string, rate?:number, pitch?:number, voiceNameHint?:string}} [opts]
  */
@@ -915,6 +924,9 @@ export function speak (text, opts = {}) {
 
   const chunks = splitForSpeech(text).filter((c) => c && c.trim())
   if (chunks.length === 0) return Promise.resolve()
+
+  const synth = window.speechSynthesis
+  if (synth.speaking || synth.pending) synth.cancel()
 
   return chunks.reduce(
     (prevPromise, chunk) => prevPromise.then(() => speakOneUtterance(chunk, { lang, rate, pitch, voiceNameHint })),

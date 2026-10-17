@@ -613,17 +613,21 @@ function currentSpeechOptions () {
   }
 }
 
-// تحري الهلال في نص القراءة الصوتية: يُضاف فقط حين تقع لحظة القراءة فعليا ضمن نافذة المسح (من
-// مساء يوم الاقتران إلى ثلاثة أيام بعد يوم الرؤية) - فتُقرأ بيانات ذلك اليوم تحديدا بصرف النظر
-// عن كونه يوم الاقتران أو يوم الرؤية أو أحد أيام التكرار الثلاثة بعده؛ وخارج هذه الأيام يبقى نص
-// القراءة كما كان تماما قبل إضافة الميزة (بلا أي ذكر لتحري الهلال إطلاقا) - طلب المستخدم صراحة.
+// تحري الهلال في نص القراءة الصوتية: تُقرأ بيانات أقرب مسح (من يوم الاقتران إلى يوم الرؤية) في
+// كل مرة دون شرط - تماما كقسم "الاقتران القادم" العادي الذي يُقرأ كل يوم بصرف النظر عن اليوم
+// الحالي (انظر nextNewMoonSentence في reader.js). كانت تُضاف هذه البيانات سابقا فقط حين تقع لحظة
+// القراءة فعليا ضمن نافذة المسح نفسها (عبر engine.findCrescentDayForMoment، المحذوفة الآن) فتُسكَت
+// خارجها - لكن بعد تضييق نافذة المسح (من يوم الاقتران إلى يوم الرؤية فقط، بلا تمديد) صارت تلك
+// النافذة أضيق من أن "الآن" يقع ضمنها في أغلب أيام الشهر عمليا، فكانت القراءة تُسكَت أغلب الوقت -
+// خلاف ما طلبه المستخدم (تجربة فعلية). الحل: استدعاء computeCrescentSurvey مباشرة دوما، فهي تُعيد
+// نتيجة صالحة لأي لحظة (أقرب اقتران لها، سابقا كان أو تاليا) بلا حاجة لبوابة أصلا.
 // المسح أثقل نسبيا من computeAll (انظر تعليق computeCrescentSurvey في engine.js) فلا يُحسب هنا
 // إلا عند بناء نص القراءة فعليا (ضغط الزر، أو كل جدولة نصف ساعة) لا كل ثانية ضمن tick().
 function buildFullNarrationText () {
   if (!lastResult) return ''
   let text = reader.buildNarrationScript(lastResult, localPartsFn, state.language)
-  const found = engine.findCrescentDayForMoment(currentLocation(), new Date())
-  const crescentText = reader.buildCrescentNarration(found, localPartsFn, state.language)
+  const survey = engine.computeCrescentSurvey(currentLocation(), new Date())
+  const crescentText = reader.buildCrescentNarration(survey, localPartsFn, state.language)
   if (crescentText) text += '\n\n' + crescentText
   return text
 }

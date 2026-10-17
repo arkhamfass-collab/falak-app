@@ -206,7 +206,16 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
  * تحري الهلال (معيارا يالوب وعودة معا): مسح متعدد الأيام (انظر crescentVisibility.js للتفصيل
  * الكامل) - حساب أثقل نسبيا من computeAll أعلاه (يفحص عادة ٢-٥ أيام، وقد يصل حتى ١٣ يوما في
  * الحالات الحدّية)، فلا يُستدعى من computeAll نفسها (التي تُستدعى كل ثانية في tick()) بل
- * دالة مستقلة تُستدعى فقط عند فتح تبويب "تحري الهلال" أو عند تغيير الموقع/التاريخ فيه.
+ * دالة مستقلة تُستدعى فقط عند فتح تبويب "تحري الهلال"، أو عند تغيير الموقع/التاريخ فيه، أو عند
+ * بناء نص القراءة الصوتية (reader.buildCrescentNarration - انظر تعليقها).
+ * نلاحظ أنها تُعيد نتيجة صالحة دوما (لا تُعيد null أو تفشل) لأي nowUtc، إذ تَختار crescentSurvey
+ * داخليا أقرب اقتران جيومركزي لتلك اللحظة (سابقا كان أو تاليا) وتمسح من يوم ذلك الاقتران إلى يوم
+ * الرؤية - تماما كما تحسب نافذة "الاقتران القادم" في reader.js (nextNewMoonSentence) دوما بصرف
+ * النظر عن اليوم الحالي. كانت توجد هنا سابقا دالة findCrescentDayForMoment تشترط تطابق اليوم
+ * المدني لـ"الآن" مع يوم بعينه ضمن أيام المسح (لتُستعمل كبوابة تُسكِت القراءة الصوتية خارج أيام
+ * المسح نفسها) - حُذفت بناء على طلب المستخدم صريحا أن تُقرأ بيانات أقرب مسح كل يوم كالاقتران
+ * القادم، لا أن تُسكَت القراءة في أغلب أيام الشهر (النافذة ضاقت كثيرا بعد حذف التمديد الثلاثي -
+ * انظر رأس crescentVisibility.js - فصار الشرط القديم يُغلق القراءة في أغلب الأيام عمليا).
  * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} [location]
  * @param {Date} [nowUtc] - أي لحظة قريبة من الاقتران المطلوب مسحه (يُحدَّد أقرب اقتران جيومركزي لها تلقائيا)
  */
@@ -214,25 +223,4 @@ export function computeCrescentSurvey (location = DEFAULT_LOCATION, nowUtc = new
   return crescentVisibilityModule.crescentSurvey(location, nowUtc)
 }
 
-/**
- * يُجري مسح تحري الهلال حول اللحظة المُعطاة، ثم يبحث فيه عن اليوم المطابق لنفس تلك اللحظة (بمطابقة
- * اليوم المدني المحلي) - خاص بتغذية القراءة الصوتية (reader.js) ببيانات تحري الهلال تحديدا حين
- * "الآن" يقع فعلا ضمن نافذة المسح (من يوم الاقتران إلى يوم الرؤية فقط، أو حتى نهاية نافذة البحث
- * إن لم يتحقق اتفاق بعد)، أو null حين "الآن" خارج تلك النافذة - فلا تُضاف أي بيانات تحرٍّ للقراءة
- * الصوتية في تلك الحالة، ويبقى نصها كما كان قبل إضافة هذه الميزة تماما (طلب المستخدم). ناتجها
- * (found) يُستعمل في reader.js كبوابة فقط (null أو لا) - محتوى القراءة نفسه يُبنى من found.survey
- * كاملة لا من found.day/found.dayIndex وحدهما، إذ طلب المستخدم لاحقا قراءة كل أيام المسح معا دفعة
- * واحدة لا يوما واحدا بعينه.
- * @param {{latDeg:number, lonEastDeg:number, observerTime:object}} [location]
- * @param {Date} [nowUtc]
- * @returns {{survey:object, day:object, dayIndex:number}|null}
- */
-export function findCrescentDayForMoment (location = DEFAULT_LOCATION, nowUtc = new Date()) {
-  const survey = crescentVisibilityModule.crescentSurvey(location, nowUtc)
-  const todayJDN = crescentVisibilityModule.localCivilJDN(nowUtc, location.observerTime)
-  const dayIndex = survey.days.findIndex((d) => d.civilJDN === todayJDN)
-  if (dayIndex === -1) return null
-  return { survey, day: survey.days[dayIndex], dayIndex }
-}
-
-export default { computeAll, computeCrescentSurvey, findCrescentDayForMoment, DEFAULT_LOCATION }
+export default { computeAll, computeCrescentSurvey, DEFAULT_LOCATION }
