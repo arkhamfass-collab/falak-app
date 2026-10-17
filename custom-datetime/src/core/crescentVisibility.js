@@ -408,6 +408,17 @@ export function crescentSurvey (location, nowUtc = new Date()) {
   const fatihJDN = fatihDetermined ? (days[sightingIndex].civilJDN + 1) : null
   const fatihGregorian = fatihJDN !== null ? hijriModule.gregorianFromCivilJDN(fatihJDN) : null
 
+  // الشهر الهجري المستطلع بهذا المسح: شهر الفاتح، أي الشهر الهجري التالي لذلك الذي يقع فيه يوم
+  // الاقتران محليا (conjLocal يقع دوما ضمن الشهر المنتهي، إذ الفاتح لا يكون إلا يوما أو يومين
+  // بعده على الأكثر). نستعمل hijriModule.astronomicalHijriFromLocalGregorianDate لأنها تعتمد
+  // نفس قاعدة "اقتران+غروب" ونفس دالتي previousNewMoonBeforeOrAt/nextNewMoonAfter المستعملتين
+  // أعلاه بالضبط (انظر astronomicalMonthStartJDN في hijri.js) - فتكون النتيجة متّسقة ذاتيا مع
+  // هذا المسح نفسه بدل الاعتماد على طريقة تقويمية أخرى قد تخالفه بيوم. الدالة معصومة من الفشل
+  // (تسقط داخليا للطريقة الكويتية الجدولية عند أي عطل) فلا حاجة لحراسة إضافية هنا.
+  const endingHijri = hijriModule.astronomicalHijriFromLocalGregorianDate(conjLocal.year, conjLocal.month, conjLocal.day, latDeg, lonEastDeg, observerTime)
+  const surveyedHijriYear = endingHijri.month === 12 ? endingHijri.year + 1 : endingHijri.year
+  const surveyedHijriMonth = endingHijri.month === 12 ? 1 : endingHijri.month + 1
+
   return {
     conjunction: { jde: conjJde, utcDate: conjUTCDate, local: conjLocal },
     startJDN,
@@ -415,7 +426,9 @@ export function crescentSurvey (location, nowUtc = new Date()) {
     sightingDayIndex: sightingIndex,
     fatihDetermined,
     fatihJDN,
-    fatihGregorian
+    fatihGregorian,
+    surveyedHijriYear,
+    surveyedHijriMonth
   }
 }
 

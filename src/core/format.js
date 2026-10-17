@@ -149,6 +149,14 @@ export function hijriMonthName (month1to12, lang = 'ar') {
   return lang === 'fr' ? hijriMonthNameFrench(month1to12) : hijriMonthNameArabic(month1to12)
 }
 
+/** يُحسب فهرس يوم الأسبوع (0=الأحد...6=السبت) لتاريخ ميلادي مدني (سنة/شهر١-١٢/يوم)، مستقلا عن
+ * أي منطقة زمنية - يوم الأسبوع صفة تقويمية محضة لا تتعلق بالتوقيت. Date.UTC + getUTCDay طريقة
+ * مضمونة لحسابه بلا إعادة تطبيق صيغة Zeller يدويا (نفس الأسلوب المستعمل أصلا في engine.js لتاريخ
+ * "الآن" المحلي؛ هذه الدالة تُعيد استعماله لأي تاريخ مدني آخر - أيام مسح تحري الهلال مثلا). */
+export function weekdayIndexFromYMD (year, month1to12, day) {
+  return new Date(Date.UTC(year, month1to12 - 1, day)).getUTCDay()
+}
+
 export default {
   normalizeDeg360,
   normalizeDegSigned180,
@@ -165,5 +173,6 @@ export default {
   hijriMonthNameFrench,
   weekdayName,
   gregorianMonthName,
-  hijriMonthName
+  hijriMonthName,
+  weekdayIndexFromYMD
 }

@@ -208,7 +208,8 @@ function kvRow (label, value, rtl = false) {
 function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
   const isAr = lang !== 'fr'
   const g = day.gregorian
-  const dateStr = `${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
+  const weekdayIdx = format.weekdayIndexFromYMD(g.year, g.month, g.day)
+  const dateStr = `${format.weekdayName(weekdayIdx, lang)} ${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
 
   let badges = ''
   if (idx === 0) badges += `<span class="crescent-badge">${i18n.t('crescent.badgeConjunctionDay', lang)}</span>`
@@ -272,10 +273,15 @@ export function renderCrescentSurvey (root, survey, localPartsFn, lang = 'ar') {
   const isAr = lang !== 'fr'
   setByDataF(root, 'crescent.conjunctionLocal', fmtDateAndClock(survey.conjunction.utcDate, localPartsFn))
 
+  const surveyedMonthName = format.hijriMonthName(survey.surveyedHijriMonth, lang)
+  const surveyedHijriText = isAr ? `${surveyedMonthName} ${survey.surveyedHijriYear} هـ` : `${surveyedMonthName} ${survey.surveyedHijriYear}`
+  setByDataF(root, 'crescent.surveyedHijriMonth', surveyedHijriText, { rtl: isAr })
+
   let fatihText
   if (survey.fatihDetermined) {
     const g = survey.fatihGregorian
-    fatihText = `${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
+    const fatihWeekdayIdx = format.weekdayIndexFromYMD(g.year, g.month, g.day)
+    fatihText = `${format.weekdayName(fatihWeekdayIdx, lang)} ${g.day} ${format.gregorianMonthName(g.month, lang)} ${g.year}`
   } else {
     fatihText = i18n.t('crescent.fatihNotFoundText', lang)
   }
@@ -284,7 +290,8 @@ export function renderCrescentSurvey (root, survey, localPartsFn, lang = 'ar') {
   let summary
   if (survey.fatihDetermined) {
     const sd = survey.days[survey.sightingDayIndex].gregorian
-    const sightDateStr = `${sd.day} ${format.gregorianMonthName(sd.month, lang)} ${sd.year}`
+    const sdWeekdayIdx = format.weekdayIndexFromYMD(sd.year, sd.month, sd.day)
+    const sightDateStr = `${format.weekdayName(sdWeekdayIdx, lang)} ${sd.day} ${format.gregorianMonthName(sd.month, lang)} ${sd.year}`
     summary = i18n.t('crescent.statusSummaryTemplate', lang, { sightDate: sightDateStr, fatihDate: fatihText })
   } else {
     summary = i18n.t('crescent.statusSummaryNotFound', lang)

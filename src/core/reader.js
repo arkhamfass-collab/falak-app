@@ -635,18 +635,30 @@ function crescentConjunctionSentenceArabic (conjunction) {
   const localPart =
     `${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)}، ` +
     `${hmsClockToArabicWords(l.hour, l.minute)} بتوقيتكم المحلي`
+  return `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) يقع يوم ${utcPart}، أي يوم ${localPart}.`
+}
+
+/** جملة تسمية الشهر الهجري المستطلع بهذا المسح (عربيا) - تُقرأ بعد جملة الاقتران مباشرة وقبل
+ * البدء في بيانات أيام المسح، وتحمل أيضا عبارة الانتقال إليها (نُقلت من آخر جملة الاقتران
+ * السابقة). الشهر المستطلع هو شهر الفاتح، أي التالي لذلك الذي يقع فيه يوم الاقتران محليا -
+ * محسوب في crescentVisibility.crescentSurvey (survey.surveyedHijriYear/Month) بنفس قاعدة
+ * "اقتران+غروب" المستعملة في حساب المسح نفسه، فيضمن الاتساق بين الشهر المُسمّى هنا وأيام المسح. */
+function crescentSurveyedMonthSentenceArabic (survey) {
+  const monthName = format.hijriMonthNameArabic(survey.surveyedHijriMonth)
   return (
-    `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) يقع يوم ${utcPart}، أي يوم ${localPart}. ` +
-    'وفيما يلي بياناته من يوم الاقتران إلى يوم الرؤية:'
+    `والشهر الهجري المستطلع بهذا التحري هو شهر ${monthName} سنة ${arabicNumberToWords(survey.surveyedHijriYear)} للهجرة. ` +
+    'وفيما يلي بيانات التحري من يوم الاقتران إلى يوم الرؤية:'
   )
 }
 
 /** بيانات يوم واحد من أيام المسح (عربيا) - تُستدعى مرة لكل يوم في survey.days. دورا الاقتران
  * والرؤية غير متنافيين عمدا (كما في badges بطاقة التبويب في render.js): لو تطابق يوم الاقتران
- * مع يوم الرؤية نفسه (رؤية الهلال مساء يوم الاقتران) تُذكر الصفتان معا بدل إسقاط إحداهما. */
+ * مع يوم الرؤية نفسه (رؤية الهلال مساء يوم الاقتران) تُذكر الصفتان معا بدل إسقاط إحداهما. يحمل
+ * تاريخ كل يوم اسم يوم الأسبوع أيضا (مبدأ الاستطلاع: كل تاريخ ميلادي يُذكر معه اسم اليوم). */
 function crescentDaySentenceArabic (day, idx, survey, localPartsFn) {
   const g = day.gregorian
-  const dateWords = `${arabicNumberToWords(g.day)} ${format.gregorianMonthNameArabic(g.month)} سنة ${arabicNumberToWords(g.year)}`
+  const weekdayIdx = format.weekdayIndexFromYMD(g.year, g.month, g.day)
+  const dateWords = `${format.weekdayNameArabic(weekdayIdx)}، ${arabicNumberToWords(g.day)} ${format.gregorianMonthNameArabic(g.month)} سنة ${arabicNumberToWords(g.year)}`
 
   const isConjunctionDay = idx === 0
   const isSightingDay = idx === survey.sightingDayIndex
@@ -694,7 +706,8 @@ function crescentDaySentenceArabic (day, idx, survey, localPartsFn) {
 function crescentFatihSentenceArabic (survey) {
   if (survey.fatihDetermined) {
     const fg = survey.fatihGregorian
-    return `ويكون يوم الفاتح، أي غرة الشهر الجديد، يوم ${arabicNumberToWords(fg.day)} ${format.gregorianMonthNameArabic(fg.month)} سنة ${arabicNumberToWords(fg.year)}.`
+    const weekdayIdx = format.weekdayIndexFromYMD(fg.year, fg.month, fg.day)
+    return `ويكون يوم الفاتح، أي غرة الشهر الجديد، يوم ${format.weekdayNameArabic(weekdayIdx)}، ${arabicNumberToWords(fg.day)} ${format.gregorianMonthNameArabic(fg.month)} سنة ${arabicNumberToWords(fg.year)}.`
   }
   return 'ولم تتحقق بعد رؤية متفق عليها بين المعيارين ضمن نافذة المسح الحالية.'
 }
@@ -706,7 +719,10 @@ function crescentFatihSentenceArabic (survey) {
  * @param {(utcDate:Date)=>object} localPartsFn
  */
 export function buildCrescentNarrationArabic (survey, localPartsFn) {
-  const parts = [crescentConjunctionSentenceArabic(survey.conjunction)]
+  const parts = [
+    crescentConjunctionSentenceArabic(survey.conjunction),
+    crescentSurveyedMonthSentenceArabic(survey)
+  ]
   survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceArabic(day, idx, survey, localPartsFn)) })
   parts.push(crescentFatihSentenceArabic(survey))
   return parts.join('\n\n')
@@ -722,8 +738,14 @@ function crescentConjunctionSentenceFrench (conjunction) {
   const localPart =
     `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
     `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
+  return `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a lieu le ${utcPart}, soit le ${localPart}.`
+}
+
+/** نظير crescentSurveyedMonthSentenceArabic بالفرنسية */
+function crescentSurveyedMonthSentenceFrench (survey) {
+  const monthName = format.hijriMonthNameFrench(survey.surveyedHijriMonth)
   return (
-    `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a lieu le ${utcPart}, soit le ${localPart}. ` +
+    `Le mois hégirien visé par cette analyse est le mois de ${monthName}, de l'année ${frenchNumberToWords(survey.surveyedHijriYear)} de l'hégire. ` +
     "Voici les données de l'analyse, du jour de la conjonction au jour de visibilité :"
   )
 }
@@ -731,7 +753,8 @@ function crescentConjunctionSentenceFrench (conjunction) {
 /** نظير crescentDaySentenceArabic بالفرنسية */
 function crescentDaySentenceFrench (day, idx, survey, localPartsFn) {
   const g = day.gregorian
-  const dateWords = `${frenchNumberToWords(g.day)} ${format.gregorianMonthNameFrench(g.month)} ${frenchNumberToWords(g.year)}`
+  const weekdayIdx = format.weekdayIndexFromYMD(g.year, g.month, g.day)
+  const dateWords = `${format.weekdayNameFrench(weekdayIdx)} ${frenchNumberToWords(g.day)} ${format.gregorianMonthNameFrench(g.month)} ${frenchNumberToWords(g.year)}`
 
   const isConjunctionDay = idx === 0
   const isSightingDay = idx === survey.sightingDayIndex
@@ -779,14 +802,18 @@ function crescentDaySentenceFrench (day, idx, survey, localPartsFn) {
 function crescentFatihSentenceFrench (survey) {
   if (survey.fatihDetermined) {
     const fg = survey.fatihGregorian
-    return `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, est donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
+    const weekdayIdx = format.weekdayIndexFromYMD(fg.year, fg.month, fg.day)
+    return `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, est donc le ${format.weekdayNameFrench(weekdayIdx)} ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
   }
   return "Aucune visibilité confirmée par les deux critères n'a encore été trouvée dans la fenêtre d'analyse actuelle."
 }
 
 /** نظير buildCrescentNarrationArabic بالفرنسية */
 export function buildCrescentNarrationFrench (survey, localPartsFn) {
-  const parts = [crescentConjunctionSentenceFrench(survey.conjunction)]
+  const parts = [
+    crescentConjunctionSentenceFrench(survey.conjunction),
+    crescentSurveyedMonthSentenceFrench(survey)
+  ]
   survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceFrench(day, idx, survey, localPartsFn)) })
   parts.push(crescentFatihSentenceFrench(survey))
   return parts.join('\n\n')
