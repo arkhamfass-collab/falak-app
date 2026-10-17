@@ -196,7 +196,8 @@ export function renderSidereal (root, r) {
 // بخلاف بقية دوال العرض أعلاه، لا تُستدعى من renderAll/tick (المسح أثقل حسابا وغير متعلق
 // بتبويب "الآن" المستمر) - يستدعيها app.js مباشرة عند فتح تبويب "تحري الهلال" أو الضغط على
 // زر التحديث فيه (انظر computeAndRenderCrescent في app.js). عدد الأيام متغيّر (من يوم إلى
-// نحو ١٣ يوما) فلا يصلح لها قالب HTML ثابت كبقية التبويبات - تُبنى بطاقات الأيام ديناميكيا هنا.
+// نحو عشرة أيام، من يوم الاقتران إلى يوم الرؤية فقط) فلا يصلح لها قالب HTML ثابت كبقية
+// التبويبات - تُبنى بطاقات الأيام ديناميكيا هنا.
 
 function kvRow (label, value, rtl = false) {
   return `<div class="kv"><span>${label}</span><b${rtl ? ' class="rtl-value"' : ''}>${value}</b></div>`
@@ -212,7 +213,6 @@ function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
   let badges = ''
   if (idx === 0) badges += `<span class="crescent-badge">${i18n.t('crescent.badgeConjunctionDay', lang)}</span>`
   if (idx === survey.sightingDayIndex) badges += `<span class="crescent-badge badge-sighting">${i18n.t('crescent.badgeSightingDay', lang)}</span>`
-  if (day.isFrozenRepeat) badges += `<span class="crescent-badge badge-frozen">${i18n.t('crescent.badgeFrozenRepeat', lang)}</span>`
 
   let body
   if (day.status === 'noSunset') {
@@ -229,7 +229,6 @@ function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
     body += kvRow(i18n.t('crescent.moonAltitudeLabel', lang), format.formatDMS(s.moonAltitudeDeg, { showPlus: true }))
     body += kvRow(i18n.t('crescent.elongationLabel', lang), format.formatDMS(s.elongationDeg))
     body += kvRow(i18n.t('crescent.illumLabel', lang), (s.illuminatedFraction * 100).toFixed(2) + '%')
-    body += kvRow(i18n.t('crescent.dazLabel', lang), format.formatDMS(s.dazDeg, { showPlus: true }))
     body += '</div>'
 
     if (s5) {
@@ -257,7 +256,6 @@ function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
 
   const cardClasses = ['crescent-day']
   if (day.bothVisible) cardClasses.push('both-visible')
-  if (day.isFrozenRepeat) cardClasses.push('frozen')
 
   return `<article class="${cardClasses.join(' ')}">
     <header class="crescent-day-head">

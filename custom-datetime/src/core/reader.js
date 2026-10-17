@@ -605,30 +605,54 @@ export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
   return lang === 'fr' ? buildNarrationScriptFrench(r, localPartsFn) : buildNarrationScriptArabic(r, localPartsFn)
 }
 
-// ------------------------- قراءة تحري الهلال (أيام المسح فقط) -------------------------
-// طلب المستخدم: تُضاف بيانات تحري الهلال إلى القراءة الصوتية فقط حين تقع لحظة القراءة فعليا ضمن
-// نافذة المسح (من مساء يوم الاقتران إلى ثلاثة أيام بعد يوم الرؤية) - فتُقرأ بيانات ذلك اليوم
-// تحديدا (لو كان يوم الاقتران، أو اليوم التالي، أو يوم الرؤية، أو أحد أيام التكرار الثلاثة بعده)،
-// وخارج هذه الأيام يبقى نص القراءة كما كان تماما قبل إضافة الميزة (بلا أي ذكر لتحري الهلال) -
-// لذا هاتان الدالتان تُستدعيان من app.js فقط حين engine.findCrescentDayForMoment تُعيد نتيجة غير
-// null، ويُضاف ناتجهما كقسم إضافي منفصل بعد نص buildNarrationScript العادي، لا بدلا منه.
+// ------------------------- قراءة تحري الهلال (كل أيام المسح دفعة واحدة) -------------------------
+// طلب المستخدم أولا: تُضاف بيانات تحري الهلال إلى القراءة الصوتية فقط حين تقع لحظة القراءة فعليا
+// ضمن نافذة المسح (من مساء يوم الاقتران إلى يوم الرؤية، بعد تضييق النافذة لاحقا - انظر رأس
+// crescentVisibility.js)، وخارج هذه الأيام يبقى نص القراءة كما كان تماما قبل إضافة الميزة (بلا
+// أي ذكر لتحري الهلال) - لذا هاتان الدالتان تُستدعيان من app.js فقط حين
+// engine.findCrescentDayForMoment تُعيد نتيجة غير null، ويُضاف ناتجهما كقسم إضافي منفصل بعد نص
+// buildNarrationScript العادي، لا بدلا منه (الشرط نفسه بلا تغيير - انظر findCrescentDayForMoment
+// في engine.js).
+// طلب المستخدم لاحقا تغيير *محتوى* القراءة: لا تُقرأ بيانات "اليوم الحالي" فقط (كما كانت)، بل
+// تُقرأ بيانات كل أيام المسح معا دفعة واحدة (من يوم الاقتران إلى يوم الرؤية) في كل مرة يُفتح فيها
+// هذا القسم أصلا - بادئة بتاريخ ووقت الاقتران نفسه (لم يكن يُقرأ من قبل إطلاقا)، ثم بيانات كل يوم
+// بالتتابع، ثم خاتمة واحدة فقط بيوم الفاتح في آخر القسم (لا تتكرر بعد كل يوم كما كانت).
 
-/** يبني فقرة "تحري الهلال" للقراءة الصوتية عربيا، ليوم بعينه من مسح تحري الهلال.
- * @param {{survey:object, day:object, dayIndex:number}} found - ناتج engine.findCrescentDayForMoment
- * @param {(utcDate:Date)=>object} localPartsFn
- */
-export function buildCrescentNarrationArabic (found, localPartsFn) {
-  const { survey, day, dayIndex } = found
+/** الجملة الافتتاحية: تاريخ ووقت الاقتران (جيومركزي) بالتوقيتين العالمي والمحلي معا - على نسق
+ * nextNewMoonSentence أعلاه (الاقتران *القادم* في قسم القمر العادي)، لكن لهذا الاقتران بعينه
+ * (survey.conjunction: أقرب اقتران لـ"الآن")، الذي قد يكون ماضيا أو حاضرا نسبة لـ"الآن" - فالصياغة
+ * هنا محايدة زمنيا عمدا. */
+function crescentConjunctionSentenceArabic (conjunction) {
+  const u = conjunction.utcDate
+  const l = conjunction.local
+  const utcPart =
+    `${arabicNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameArabic(u.getUTCMonth() + 1)}، ` +
+    `${hmsClockToArabicWords(u.getUTCHours(), u.getUTCMinutes())} بالتوقيت العالمي`
+  const localPart =
+    `${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)}، ` +
+    `${hmsClockToArabicWords(l.hour, l.minute)} بتوقيتكم المحلي`
+  return (
+    `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) كان يوم ${utcPart}، أي يوم ${localPart}. ` +
+    'وفيما يلي بياناته من يوم الاقتران إلى يوم الرؤية:'
+  )
+}
+
+/** بيانات يوم واحد من أيام المسح (عربيا) - تُستدعى مرة لكل يوم في survey.days. دورا الاقتران
+ * والرؤية غير متنافيين عمدا (كما في badges بطاقة التبويب في render.js): لو تطابق يوم الاقتران
+ * مع يوم الرؤية نفسه (رؤية الهلال مساء يوم الاقتران) تُذكر الصفتان معا بدل إسقاط إحداهما. */
+function crescentDaySentenceArabic (day, idx, survey, localPartsFn) {
   const g = day.gregorian
   const dateWords = `${arabicNumberToWords(g.day)} ${format.gregorianMonthNameArabic(g.month)} سنة ${arabicNumberToWords(g.year)}`
 
+  const isConjunctionDay = idx === 0
+  const isSightingDay = idx === survey.sightingDayIndex
   let roleText
-  if (dayIndex === 0) roleText = 'وهو يوم الاقتران الفلكي'
-  else if (day.isFrozenRepeat) roleText = 'وتُكرَّر فيه بيانات يوم الرؤية'
-  else if (dayIndex === survey.sightingDayIndex) roleText = 'وهو يوم الرؤية، إذ اتفق فيه معيارا يالوب وعودة معا على إمكان الرؤية'
+  if (isConjunctionDay && isSightingDay) roleText = 'وهو يوم الاقتران الفلكي نفسه، وفيه أيضا اتفق معيارا يالوب وعودة معا على إمكان الرؤية، فكان يوم الرؤية أيضا'
+  else if (isConjunctionDay) roleText = 'وهو يوم الاقتران الفلكي'
+  else if (isSightingDay) roleText = 'وهو يوم الرؤية، إذ اتفق فيه معيارا يالوب وعودة معا على إمكان الرؤية'
   else roleText = 'ضمن أيام تحري رؤية الهلال'
 
-  let body = `أما تحري رؤية الهلال، فهذه بياناته ليوم ${dateWords}، ${roleText}. `
+  let body = `بيانات يوم ${dateWords}، ${roleText}. `
 
   if (day.status === 'noSunset') {
     return body + 'ولم تغرب الشمس هذا اليوم عند موقعكم، فتعذّر حساب التحري له.'
@@ -639,7 +663,7 @@ export function buildCrescentNarrationArabic (found, localPartsFn) {
     `عند الغروب، أي ${dateToClockWords(day.sunsetDate, localPartsFn)}: عمر الهلال ${hoursDecimalToArabicDuration(s.ageHours)}، ` +
     `ومكثه بعد الغروب ${s.lagMinutes != null ? arabicCountedNoun(Math.round(s.lagMinutes), NOUN_FORMS.minute) : 'غير متحقق، إذ يغرب القمر قبل الشمس أو معها'}، ` +
     `وارتفاعه ${dmsToArabicWords(s.moonAltitudeDeg)}، واستطالته عن الشمس ${dmsToArabicWords(s.elongationDeg)}، ` +
-    `ونسبة النور فيه ${Math.round(s.illuminatedFraction * 100)} بالمئة، وفرق سمته عن الشمس ${dmsToArabicWords(s.dazDeg)}. `
+    `ونسبة النور فيه ${Math.round(s.illuminatedFraction * 100)} بالمئة. `
 
   const s5 = day.snapshots.sunMinus5
   if (s5) {
@@ -654,34 +678,68 @@ export function buildCrescentNarrationArabic (found, localPartsFn) {
     body +=
       `وعند الوقت الأمثل لتقييم المعيارين، أي ${dateToClockWords(day.bestTime, localPartsFn)}: ` +
       `نتيجة معيار يالوب هي المنطقة ${day.yallop.zone} بقيمة ${day.yallop.q.toFixed(3)}، أي ${yVisible}، ` +
-      `ونتيجة معيار عودة هي المنطقة ${day.odeh.zone} بقيمة ${day.odeh.v.toFixed(2)}، أي ${oVisible}. `
+      `ونتيجة معيار عودة هي المنطقة ${day.odeh.zone} بقيمة ${day.odeh.v.toFixed(2)}، أي ${oVisible}.`
   } else {
-    body += 'ويغرب القمر هذا المساء قبل غروب الشمس أو معه، فلا نافذة رصد فيه، ولم تُحسب نتيجتا المعيارين. '
-  }
-
-  if (survey.fatihDetermined) {
-    const fg = survey.fatihGregorian
-    body += `ويكون يوم الفاتح، أي غرة الشهر الجديد، يوم ${arabicNumberToWords(fg.day)} ${format.gregorianMonthNameArabic(fg.month)} سنة ${arabicNumberToWords(fg.year)}.`
-  } else {
-    body += 'ولم تتحقق بعد رؤية متفق عليها بين المعيارين ضمن نافذة المسح الحالية.'
+    body += 'ويغرب القمر هذا المساء قبل غروب الشمس أو معه، فلا نافذة رصد فيه، ولم تُحسب نتيجتا المعيارين.'
   }
 
   return body
 }
 
-/** نظير buildCrescentNarrationArabic بالفرنسية */
-export function buildCrescentNarrationFrench (found, localPartsFn) {
-  const { survey, day, dayIndex } = found
+/** الخاتمة: يوم الفاتح، مرة واحدة فقط في آخر القسم كله (لا بعد كل يوم كما كانت قبل هذا التعديل) */
+function crescentFatihSentenceArabic (survey) {
+  if (survey.fatihDetermined) {
+    const fg = survey.fatihGregorian
+    return `ويكون يوم الفاتح، أي غرة الشهر الجديد، يوم ${arabicNumberToWords(fg.day)} ${format.gregorianMonthNameArabic(fg.month)} سنة ${arabicNumberToWords(fg.year)}.`
+  }
+  return 'ولم تتحقق بعد رؤية متفق عليها بين المعيارين ضمن نافذة المسح الحالية.'
+}
+
+/** يبني فقرة "تحري الهلال" الكاملة للقراءة الصوتية عربيا: جملة افتتاحية بتاريخ ووقت الاقتران،
+ * ثم بيانات كل أيام المسح (survey.days كاملة - من يوم الاقتران إلى يوم الرؤية) بالتتابع، ثم
+ * خاتمة واحدة بيوم الفاتح. found.day/found.dayIndex (مطابقة "الآن" بيوم بعينه) لا تُستعملان هنا
+ * إطلاقا - تُستعملان فقط كبوابة في app.js لتقرير هل يُضاف هذا القسم أصلا (انظر التعليق أعلى الكتلة).
+ * @param {{survey:object, day:object, dayIndex:number}} found - ناتج engine.findCrescentDayForMoment
+ * @param {(utcDate:Date)=>object} localPartsFn
+ */
+export function buildCrescentNarrationArabic (found, localPartsFn) {
+  const { survey } = found
+  const parts = [crescentConjunctionSentenceArabic(survey.conjunction)]
+  survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceArabic(day, idx, survey, localPartsFn)) })
+  parts.push(crescentFatihSentenceArabic(survey))
+  return parts.join('\n\n')
+}
+
+/** نظير crescentConjunctionSentenceArabic بالفرنسية */
+function crescentConjunctionSentenceFrench (conjunction) {
+  const u = conjunction.utcDate
+  const l = conjunction.local
+  const utcPart =
+    `${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)}, ` +
+    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes())} en temps universel (UTC)`
+  const localPart =
+    `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
+    `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
+  return (
+    `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a eu lieu le ${utcPart}, soit le ${localPart}. ` +
+    "Voici les données de l'analyse, du jour de la conjonction au jour de visibilité :"
+  )
+}
+
+/** نظير crescentDaySentenceArabic بالفرنسية */
+function crescentDaySentenceFrench (day, idx, survey, localPartsFn) {
   const g = day.gregorian
   const dateWords = `${frenchNumberToWords(g.day)} ${format.gregorianMonthNameFrench(g.month)} ${frenchNumberToWords(g.year)}`
 
+  const isConjunctionDay = idx === 0
+  const isSightingDay = idx === survey.sightingDayIndex
   let roleText
-  if (dayIndex === 0) roleText = 'le jour de la conjonction astronomique'
-  else if (day.isFrozenRepeat) roleText = 'un jour où les données du jour de visibilité sont répétées'
-  else if (dayIndex === survey.sightingDayIndex) roleText = "le jour de visibilité, où les deux critères, Yallop et Odeh, se sont accordés sur la possibilité de voir le croissant"
+  if (isConjunctionDay && isSightingDay) roleText = "c'est le jour de la conjonction astronomique lui-même, où les deux critères, Yallop et Odeh, se sont également accordés sur la possibilité de voir le croissant : c'est donc aussi le jour de visibilité"
+  else if (isConjunctionDay) roleText = 'le jour de la conjonction astronomique'
+  else if (isSightingDay) roleText = "le jour de visibilité, où les deux critères, Yallop et Odeh, se sont accordés sur la possibilité de voir le croissant"
   else roleText = "l'un des jours de l'analyse de visibilité du croissant"
 
-  let body = `Quant à l'observation du croissant lunaire, voici les données du ${dateWords}, ${roleText}. `
+  let body = `Données du ${dateWords}, ${roleText}. `
 
   if (day.status === 'noSunset') {
     return body + "Le Soleil ne s'est pas couché ce jour-là à votre position, l'analyse est donc impossible pour ce jour."
@@ -692,7 +750,7 @@ export function buildCrescentNarrationFrench (found, localPartsFn) {
     `Au coucher du soleil, à ${dateToClockWordsFrench(day.sunsetDate, localPartsFn)} : l'âge du croissant est de ${hoursDecimalToFrenchDuration(s.ageHours)}, ` +
     `son décalage après le coucher du soleil est de ${s.lagMinutes != null ? frenchCountedNoun(Math.round(s.lagMinutes), FRENCH_NOUN_FORMS.minute) : 'non applicable, car la Lune se couche avant le Soleil ou en même temps'}, ` +
     `sa hauteur est de ${dmsToFrenchWords(s.moonAltitudeDeg)}, son élongation par rapport au Soleil est de ${dmsToFrenchWords(s.elongationDeg)}, ` +
-    `son taux d'éclairement est de ${Math.round(s.illuminatedFraction * 100)} pour cent, et la différence d'azimut avec le Soleil est de ${dmsToFrenchWords(s.dazDeg)}. `
+    `et son taux d'éclairement est de ${Math.round(s.illuminatedFraction * 100)} pour cent. `
 
   const s5 = day.snapshots.sunMinus5
   if (s5) {
@@ -707,24 +765,37 @@ export function buildCrescentNarrationFrench (found, localPartsFn) {
     body +=
       `Et au moment optimal d'évaluation des critères, à ${dateToClockWordsFrench(day.bestTime, localPartsFn)} : ` +
       `le résultat du critère de Yallop est la zone ${day.yallop.zone} avec une valeur de ${day.yallop.q.toFixed(3)}, soit ${yVisible}, ` +
-      `et le résultat du critère d'Odeh est la zone ${day.odeh.zone} avec une valeur de ${day.odeh.v.toFixed(2)}, soit ${oVisible}. `
+      `et le résultat du critère d'Odeh est la zone ${day.odeh.zone} avec une valeur de ${day.odeh.v.toFixed(2)}, soit ${oVisible}.`
   } else {
-    body += "La Lune se couche ce soir avant le coucher du soleil ou en même temps, il n'y a donc pas de fenêtre d'observation, et les deux critères n'ont pas été calculés. "
-  }
-
-  if (survey.fatihDetermined) {
-    const fg = survey.fatihGregorian
-    body += `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, sera donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
-  } else {
-    body += "Aucune visibilité confirmée par les deux critères n'a encore été trouvée dans la fenêtre d'analyse actuelle."
+    body += "La Lune se couche ce soir avant le coucher du soleil ou en même temps, il n'y a donc pas de fenêtre d'observation, et les deux critères n'ont pas été calculés."
   }
 
   return body
 }
 
+/** نظير crescentFatihSentenceArabic بالفرنسية */
+function crescentFatihSentenceFrench (survey) {
+  if (survey.fatihDetermined) {
+    const fg = survey.fatihGregorian
+    return `Le jour d'ouverture du nouveau mois, c'est-à-dire le début du nouveau mois lunaire, sera donc le ${frenchNumberToWords(fg.day)} ${format.gregorianMonthNameFrench(fg.month)} ${frenchNumberToWords(fg.year)}.`
+  }
+  return "Aucune visibilité confirmée par les deux critères n'a encore été trouvée dans la fenêtre d'analyse actuelle."
+}
+
+/** نظير buildCrescentNarrationArabic بالفرنسية */
+export function buildCrescentNarrationFrench (found, localPartsFn) {
+  const { survey } = found
+  const parts = [crescentConjunctionSentenceFrench(survey.conjunction)]
+  survey.days.forEach((day, idx) => { parts.push(crescentDaySentenceFrench(day, idx, survey, localPartsFn)) })
+  parts.push(crescentFatihSentenceFrench(survey))
+  return parts.join('\n\n')
+}
+
 /**
- * يبني فقرة تحري الهلال باللغة المطلوبة، أو نصا فارغا إن كانت found تساوي null (أي أن لحظة
- * القراءة تقع خارج نافذة المسح) - نقطة الدخول الموحَّدة التي يستعملها app.js.
+ * يبني فقرة تحري الهلال الكاملة (كل أيام المسح معا) باللغة المطلوبة، أو نصا فارغا إن كانت found
+ * تساوي null (أي أن لحظة القراءة تقع خارج نافذة المسح) - نقطة الدخول الموحَّدة التي يستعملها
+ * app.js. found نفسها تبقى بوابة الدخول فقط (null أو لا) - محتوى القراءة يُبنى من found.survey
+ * كاملة، لا من found.day وحده.
  * @param {{survey:object, day:object, dayIndex:number}|null} found
  * @param {(utcDate:Date)=>object} localPartsFn
  * @param {'ar'|'fr'} [lang='ar']
