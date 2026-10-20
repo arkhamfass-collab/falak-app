@@ -482,7 +482,8 @@ export function buildNarrationScriptFrench (r, localPartsFn) {
     `Ascension droite ${hmsAngleToFrenchWords(m.equatorial.rightAscensionDeg)}, déclinaison ${dmsToFrenchWords(m.equatorial.declinationDeg, 'declination')}. ` +
     `Hauteur actuelle ${dmsToFrenchWords(m.horizontal.altitudeDeg)}, azimut ${dmsToFrenchWords(m.horizontal.azimuthDeg)}, angle horaire ${hmsAngleToFrenchWords(m.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `Lever à ${dateToClockWordsFrench(m.riseTransitSet.riseDate, localPartsFn)}, passage au méridien à ${dateToClockWordsFrench(m.riseTransitSet.transitDate, localPartsFn)}, coucher à ${dateToClockWordsFrench(m.riseTransitSet.setDate, localPartsFn)}. ` +
-    `Élongation par rapport au Soleil ${dmsToFrenchWords(m.elongationDeg)}, âge ${m.ageDays.toFixed(1)} jours, distance à la Terre ${Math.round(m.distanceKm).toLocaleString('en-US')} kilomètres. ` +
+    `Élongation par rapport au Soleil ${dmsToFrenchWords(m.elongationDeg)}, âge ${m.ageDays.toFixed(1)} jours, distance à la Terre ${Math.round(m.distanceKm).toLocaleString('en-US')} kilomètres, ` +
+    `parallaxe horizontale ${m.parallaxArcmin.toFixed(1)} minutes d'arc, et demi-diamètre apparent ${m.semiDiameterArcmin.toFixed(1)} minutes d'arc. ` +
     `Phase actuelle : ${m.phaseNameFrench}, taux d'éclairement ${Math.round(m.illuminatedFraction * 100)} pour cent. ` +
     nextNewMoonSentenceFrench(m.nextNewMoon)
   )
@@ -573,7 +574,8 @@ export function buildNarrationScriptArabic (r, localPartsFn) {
     `مطلعه المستقيم ${hmsAngleToArabicWords(m.equatorial.rightAscensionDeg)}، وميله ${dmsToArabicWords(m.equatorial.declinationDeg, 'declination')}. ` +
     `ارتفاعه الآن ${dmsToArabicWords(m.horizontal.altitudeDeg)}، وسمته ${dmsToArabicWords(m.horizontal.azimuthDeg)}، وزاويته الساعية ${hmsAngleToArabicWords(m.horizontal.hourAngleDeg, 'hourAngle')}. ` +
     `شروقه ${dateToClockWords(m.riseTransitSet.riseDate, localPartsFn)}، وعبوره ${dateToClockWords(m.riseTransitSet.transitDate, localPartsFn)}، وغروبه ${dateToClockWords(m.riseTransitSet.setDate, localPartsFn)}. ` +
-    `مطاله عن الشمس ${dmsToArabicWords(m.elongationDeg)}، وعمره ${m.ageDays.toFixed(1)} يوما، وبعده عن الأرض ${Math.round(m.distanceKm).toLocaleString('en-US')} كيلومترا. ` +
+    `مطاله عن الشمس ${dmsToArabicWords(m.elongationDeg)}، وعمره ${m.ageDays.toFixed(1)} يوما، وبعده عن الأرض ${Math.round(m.distanceKm).toLocaleString('en-US')} كيلومترا، ` +
+    `واختلاف منظره الأفقي ${m.parallaxArcmin.toFixed(1)} دقيقة قوسية، ونصف قطره الظاهري ${m.semiDiameterArcmin.toFixed(1)} دقيقة قوسية. ` +
     `طوره الحالي: ${m.phaseNameArabic}، بنسبة إضاءة ${Math.round(m.illuminatedFraction * 100)} بالمئة. ` +
     nextNewMoonSentence(m.nextNewMoon)
   )

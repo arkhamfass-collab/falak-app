@@ -28,6 +28,11 @@ const D2R = Math.PI / 180
 const R2D = 180 / Math.PI
 const earth = new Planet(earthData)
 
+/** نصف قطر القمر الفعلي بالكم - نفس القيمة المعتمدة في crescentVisibility.js (MOON_RADIUS_KM
+ * هناك)؛ مكرَّرة هنا بدل استيرادها من ذلك الملف لتفادي استيراد دائري (crescentVisibility.js
+ * نفسه يستورد moon.js). ثابت فيزيائي عالمي لا يختلف بين الملفين. */
+const MOON_RADIUS_KM = 1737.4
+
 /** الإحداثيات البروجية (الظاهرية) والاستوائية (الظاهرية) للقمر عند لحظة TT (jde) معيّنة */
 export function moonEclipticAndEquatorial (jde) {
   const geo = moonposition.position(jde) // {lon, lat, range} بلا تصحيح الرؤوس (nutation)
@@ -40,6 +45,15 @@ export function moonEclipticAndEquatorial (jde) {
   // trueObliquity (الميل الكلي الحقيقي) يُرجَع هنا أيضا لإعادة استعماله في topocentricEcliptic
   // أدناه (تحويل الإحداثيات الطوبوغرافية نفسها إلى بروجية) بلا إعادة حساب nutation من جديد.
   return { ecl, eq: { ra: eq.ra, dec: eq.dec }, range: geo.range, parallax, trueObliquity }
+}
+
+/** نصف القطر الظاهري *الجيومركزي* للقمر، بالدقائق القوسية - من المسافة الجيومركزية مباشرة (بلا
+ * تصحيح متوازي السمت). هذا هو المقدار "التقويمي" المعتاد في الأزياج والتقاويم الفلكية (كاختلاف
+ * المنظر الأفقي تماما) - بخلاف نصف القطر *الطوبوغرافي* الذي تحسبه crescentVisibility.js خصيصا
+ * لتحري الهلال (topocentricSemiDiameterArcmin)، والذي يتغيّر قليلا بارتفاع القمر الفعلي في
+ * السماء عند موقع مراقب بعينه. */
+export function geocentricSemiDiameterArcmin (geocentricRangeKm) {
+  return Math.atan(MOON_RADIUS_KM / geocentricRangeKm) * R2D * 60
 }
 
 /**
@@ -264,6 +278,7 @@ export function moonPhaseInfo (jde, sunEq, moonEq, moonRangeKm) {
 
 export default {
   moonEclipticAndEquatorial,
+  geocentricSemiDiameterArcmin,
   topocentricEquatorial,
   topocentricEcliptic,
   horizontalFromEquatorial,

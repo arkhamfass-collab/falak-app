@@ -176,6 +176,8 @@ export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   setByDataF(root, 'moon.elong', format.formatDMS(m.elongationDeg))
   setByDataF(root, 'moon.age', m.ageDays.toFixed(2) + daySuffix, { rtl: isAr })
   setByDataF(root, 'moon.dist', Math.round(m.distanceKm).toLocaleString('en-US') + kmSuffix, { rtl: isAr })
+  setByDataF(root, 'moon.parallax', m.parallaxArcmin.toFixed(2) + '′')
+  setByDataF(root, 'moon.semiDiameter', m.semiDiameterArcmin.toFixed(2) + '′')
   setByDataF(root, 'moon.phase', isAr ? m.phaseNameArabic : m.phaseNameFrench, { rtl: isAr })
   setByDataF(root, 'moon.illum', (m.illuminatedFraction * 100).toFixed(1) + '%')
   setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: isAr })

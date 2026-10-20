@@ -139,6 +139,15 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
   const moonPhase = moonModule.moonPhaseInfo(jde, sunEq, moonData.eq, moonData.range)
   const nextNewMoonLocal = timeutilModule.localPartsFromUTC(moonPhase.nextNewMoonUTCDate, observerTime)
 
+  // اختلاف المنظر الأفقي ونصف القطر الظاهري: كمِّيتان إضافيتان، جيومركزيتان دائما كالمسافة
+  // تماما (بصرف النظر عن moonCoordFrame - نفس المنطق الموثَّق أعلاه)؛ moonData.parallax محسوب
+  // أصلا داخل moonEclipticAndEquatorial (بالراديان) فلا حاجة لإعادة حسابه، فقط تحويله لدقائق
+  // قوسية. نصف القطر الظاهري يُحسب من المسافة الجيومركزية نفسها (moonData.range) عبر
+  // moonModule.geocentricSemiDiameterArcmin - وهو مقدار "تقويمي" معتاد يُذكر مع اختلاف المنظر
+  // عادة في الأزياج الفلكية، لا نظير نصف القطر الطوبوغرافي الخاص بتحري الهلال في crescentVisibility.js.
+  const moonParallaxArcmin = moonData.parallax * R2D * 60
+  const moonSemiDiameterArcmin = moonModule.geocentricSemiDiameterArcmin(moonData.range)
+
   const moonIsTopocentric = moonCoordFrame === 'topocentric'
   const moonEqUsed = moonIsTopocentric ? moonTopoEq : moonData.eq
   const moonEclUsed = moonIsTopocentric
@@ -162,6 +171,8 @@ export function computeAll (location = DEFAULT_LOCATION, nowUtc = new Date(), pr
     phaseNameArabic: moonPhase.phaseNameArabic,
     phaseNameFrench: moonPhase.phaseNameFrench,
     distanceKm: moonData.range,
+    parallaxArcmin: moonParallaxArcmin,
+    semiDiameterArcmin: moonSemiDiameterArcmin,
     nextNewMoon: { utcDate: moonPhase.nextNewMoonUTCDate, local: nextNewMoonLocal },
     zodiac: {
       index: moonZodiac.signIndex,
