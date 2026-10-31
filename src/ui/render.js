@@ -33,11 +33,12 @@ function fmtDateAndClock (date, localPartsFn) {
   return `${p.year}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}`
 }
 
-/** كـfmtDateAndClock، لكن بطلب المستخدم صريحا لـ"لحظة الاقتران" في تبويب تحري الهلال تحديدا:
- * تُضاف قبل التاريخ اسمُ يوم الأسبوع (بمبدأ الاستطلاع نفسه: كل تاريخ يُذكر معه اسم يومه)، وتُضاف
- * للوقت الثواني أيضا (بمبدأ "ثواني القراءة الصوتية" نفسه - دقة اللحظة الفلكية الدقيقة أهم من دقة
- * "الآن" أو "الاقتران القادم" التقريبية). دالة مستقلة لا تعديل في fmtDateAndClock نفسها، حتى لا
- * يتأثر أي من مواضع استعمالها الأخرى (moon.nextNewUtc/nextNewLocal) بهذا التغيير. */
+/** كـfmtDateAndClock، لكن بطلب المستخدم صريحا لكل حقول "لحظة الاقتران" (في تبويب تحري الهلال
+ * وتبويب بيانات القمر معا): تُضاف قبل التاريخ اسمُ يوم الأسبوع (بمبدأ الاستطلاع نفسه: كل تاريخ
+ * يُذكر معه اسم يومه)، وتُضاف للوقت الثواني أيضا (بمبدأ "ثواني القراءة الصوتية" نفسه - دقة اللحظة
+ * الفلكية الدقيقة أهم من دقة "الآن" التقريبية). دالة مستقلة لا تعديل في fmtDateAndClock نفسها،
+ * المستمرة في الاستعمال لبقية حقول الوقت التي لا تمثّل "لحظة" فلكية بعينها (كالمطلع/الغروب
+ * التقريبيين لكل يوم). */
 function fmtDateAndClockWithWeekday (date, localPartsFn, lang) {
   if (!date) return '—'
   const p = localPartsFn(date)
@@ -192,8 +193,8 @@ export function renderMoon (root, r, localPartsFn, lang = 'ar') {
   setByDataF(root, 'moon.semiDiameter', m.semiDiameterArcmin.toFixed(2) + '′')
   setByDataF(root, 'moon.phase', isAr ? m.phaseNameArabic : m.phaseNameFrench, { rtl: isAr })
   setByDataF(root, 'moon.illum', (m.illuminatedFraction * 100).toFixed(1) + '%')
-  setByDataF(root, 'moon.nextNewUtc', fmtDateAndClock(m.nextNewMoon.utcDate, UTC_PARTS_FN), { rtl: isAr })
-  setByDataF(root, 'moon.nextNewLocal', fmtDateAndClock(m.nextNewMoon.utcDate, localPartsFn), { rtl: isAr })
+  setByDataF(root, 'moon.nextNewUtc', fmtDateAndClockWithWeekday(m.nextNewMoon.utcDate, UTC_PARTS_FN, lang), { rtl: isAr })
+  setByDataF(root, 'moon.nextNewLocal', fmtDateAndClockWithWeekday(m.nextNewMoon.utcDate, localPartsFn, lang), { rtl: isAr })
   setByDataF(root, 'moon.zodiacDeg', format.formatDMS(m.zodiac.degreeInSign))
   setByDataF(root, 'moon.zodiacSign', isAr ? m.zodiac.nameArabic : m.zodiac.nameFrench, { rtl: isAr })
   setByDataF(root, 'moon.manzilDeg', format.formatDMS(m.manzil.degreeInManzil))

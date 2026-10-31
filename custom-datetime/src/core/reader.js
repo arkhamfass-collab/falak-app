@@ -300,16 +300,21 @@ function dateToClockWordsOr (date, localPartsFn, fallbackMsg) {
   return hmsClockToArabicWords(parts.hour, parts.minute, parts.second)
 }
 
-/** يبني عبارة الاقتران القادم بالتوقيتين العالمي والمحلي معا (كما طلب المستخدم صريحا) */
+/** يبني عبارة الاقتران القادم بالتوقيتين العالمي والمحلي معا (كما طلب المستخدم صريحا) - مع اسم
+ * يوم الأسبوع والسنة الكاملة والثواني لكل من التوقيتين (بطلب المستخدم صريحا أيضا، على نسق
+ * crescentConjunctionSentenceArabic أدناه بالضبط - انظر تعليقها لتفصيل حساب يومي الأسبوع العالمي
+ * والمحلي كليهما بشكل مستقل، إذ قد يختلفان يوما قرب منتصف الليل). */
 function nextNewMoonSentence (nextNewMoon) {
   const u = nextNewMoon.utcDate
   const l = nextNewMoon.local
+  const utcWeekdayIdx = u.getUTCDay()
   const utcPart =
-    `${arabicNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameArabic(u.getUTCMonth() + 1)}، ` +
-    `${hmsClockToArabicWords(u.getUTCHours(), u.getUTCMinutes())} بالتوقيت العالمي`
+    `${format.weekdayNameArabic(utcWeekdayIdx)}، ${arabicNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameArabic(u.getUTCMonth() + 1)} سنة ${arabicNumberToWords(u.getUTCFullYear())}، ` +
+    `${hmsClockToArabicWords(u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds())} بالتوقيت العالمي`
+  const localWeekdayIdx = format.weekdayIndexFromYMD(l.year, l.month, l.day)
   const localPart =
-    `${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)}، ` +
-    `${hmsClockToArabicWords(l.hour, l.minute)} بتوقيتكم المحلي`
+    `${format.weekdayNameArabic(localWeekdayIdx)}، ${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)} سنة ${arabicNumberToWords(l.year)}، ` +
+    `${hmsClockToArabicWords(l.hour, l.minute, l.second)} بتوقيتكم المحلي`
   return `الاقتران القادم - أي المحاق - يكون يوم ${utcPart}، أي يوم ${localPart}.`
 }
 
@@ -404,16 +409,20 @@ function dateToClockWordsFrenchOr (date, localPartsFn, fallbackMsg) {
   return hmsClockToFrenchWords(parts.hour, parts.minute, parts.second)
 }
 
-/** نظير nextNewMoonSentence بالفرنسية */
+/** نظير nextNewMoonSentence بالفرنسية - انظر تعليقها وتعليق crescentConjunctionSentenceFrench
+ * لتفصيل إضافة السنة واسم يوم الأسبوع والثواني؛ لا فاصلة بعد اسم اليوم بالفرنسية (خلافا للعربية)
+ * - نفس العادة الإملائية الفرنسية المعتمدة أصلا هناك. */
 function nextNewMoonSentenceFrench (nextNewMoon) {
   const u = nextNewMoon.utcDate
   const l = nextNewMoon.local
+  const utcWeekdayIdx = u.getUTCDay()
   const utcPart =
-    `${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)}, ` +
-    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes())} en temps universel (UTC)`
+    `${format.weekdayNameFrench(utcWeekdayIdx)} ${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)} ${frenchNumberToWords(u.getUTCFullYear())}, ` +
+    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds())} en temps universel (UTC)`
+  const localWeekdayIdx = format.weekdayIndexFromYMD(l.year, l.month, l.day)
   const localPart =
-    `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
-    `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
+    `${format.weekdayNameFrench(localWeekdayIdx)} ${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)} ${frenchNumberToWords(l.year)}, ` +
+    `à ${hmsClockToFrenchWords(l.hour, l.minute, l.second)} à votre heure locale`
   return `La prochaine conjonction - c'est-à-dire la nouvelle lune - aura lieu le ${utcPart}, soit le ${localPart}.`
 }
 
