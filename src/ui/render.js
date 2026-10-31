@@ -33,6 +33,18 @@ function fmtDateAndClock (date, localPartsFn) {
   return `${p.year}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}`
 }
 
+/** كـfmtDateAndClock، لكن بطلب المستخدم صريحا لـ"لحظة الاقتران" في تبويب تحري الهلال تحديدا:
+ * تُضاف قبل التاريخ اسمُ يوم الأسبوع (بمبدأ الاستطلاع نفسه: كل تاريخ يُذكر معه اسم يومه)، وتُضاف
+ * للوقت الثواني أيضا (بمبدأ "ثواني القراءة الصوتية" نفسه - دقة اللحظة الفلكية الدقيقة أهم من دقة
+ * "الآن" أو "الاقتران القادم" التقريبية). دالة مستقلة لا تعديل في fmtDateAndClock نفسها، حتى لا
+ * يتأثر أي من مواضع استعمالها الأخرى (moon.nextNewUtc/nextNewLocal) بهذا التغيير. */
+function fmtDateAndClockWithWeekday (date, localPartsFn, lang) {
+  if (!date) return '—'
+  const p = localPartsFn(date)
+  const weekdayIdx = format.weekdayIndexFromYMD(p.year, p.month, p.day)
+  return `${format.weekdayName(weekdayIdx, lang)} ${p.year}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}:${pad2(p.second)}`
+}
+
 /** كـfmtClockOrDash، لكن يُرجع نص رسالة (مثلا "لم يقع اليوم عند موقعكم") بدل شَرطة عند غياب القيمة -
  * تُستعمل للأوقات التي قد لا تقع فعلا في بعض الأيام (أوقات القبلة/الأوقات الشرعية الإضافية) حيث
  * الشرطة المجردة لا تُفسَّر بسهولة، بخلاف غياب عابر لحظي كأوقات الصلاة الاعتيادية. */
@@ -273,7 +285,7 @@ function crescentDayCardHtml (day, idx, survey, localPartsFn, lang) {
  * أو الضغط على زر التحديث، لا كل ثانية (انظر التعليق أعلى الكتلة) */
 export function renderCrescentSurvey (root, survey, localPartsFn, lang = 'ar') {
   const isAr = lang !== 'fr'
-  setByDataF(root, 'crescent.conjunctionLocal', fmtDateAndClock(survey.conjunction.utcDate, localPartsFn))
+  setByDataF(root, 'crescent.conjunctionLocal', fmtDateAndClockWithWeekday(survey.conjunction.utcDate, localPartsFn, lang), { rtl: isAr })
 
   const surveyedMonthName = format.hijriMonthName(survey.surveyedHijriMonth, lang)
   const surveyedHijriText = isAr ? `${surveyedMonthName} ${survey.surveyedHijriYear} هـ` : `${surveyedMonthName} ${survey.surveyedHijriYear}`

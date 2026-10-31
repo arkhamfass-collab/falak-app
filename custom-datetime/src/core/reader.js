@@ -627,16 +627,24 @@ export function buildNarrationScript (r, localPartsFn, lang = 'ar') {
 /** الجملة الافتتاحية: تاريخ ووقت الاقتران (جيومركزي) بالتوقيتين العالمي والمحلي معا - على نسق
  * nextNewMoonSentence أعلاه (الاقتران *القادم* في قسم القمر العادي)، لكن لهذا الاقتران بعينه
  * (survey.conjunction: أقرب اقتران لـ"الآن")، الذي قد يكون ماضيا أو حاضرا نسبة لـ"الآن" - فالصياغة
- * هنا محايدة زمنيا عمدا. */
+ * هنا محايدة زمنيا عمدا.
+ * بطلب المستخدم صريحا: تُذكر السنة واسم يوم الأسبوع مع كل من التاريخين (العالمي والمحلي)، وتُذكر
+ * الثواني أيضا مع الساعة والدقيقة - لا تبقى هذه اللحظة بعيدة في الدقة عن بقية اللحظات الفلكية
+ * الدقيقة في القراءة الصوتية (كمواقيت الصلاة وشروق/غروب الشمس والقمر، انظر تعليق dateToClockWords
+ * أعلى الملف). يوم الأسبوع العالمي محسوب من u.getUTCDay() مباشرة (صفة تقويمية للتاريخ العالمي
+ * نفسه، لا علاقة لها بالتوقيت المحلي)، ويوم الأسبوع المحلي من format.weekdayIndexFromYMD على
+ * التاريخ المحلي (قد يختلف يوما عن العالمي قرب منتصف الليل حسب فرق التوقيت). */
 function crescentConjunctionSentenceArabic (conjunction) {
   const u = conjunction.utcDate
   const l = conjunction.local
+  const utcWeekdayIdx = u.getUTCDay()
   const utcPart =
-    `${arabicNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameArabic(u.getUTCMonth() + 1)}، ` +
-    `${hmsClockToArabicWords(u.getUTCHours(), u.getUTCMinutes())} بالتوقيت العالمي`
+    `${format.weekdayNameArabic(utcWeekdayIdx)}، ${arabicNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameArabic(u.getUTCMonth() + 1)} سنة ${arabicNumberToWords(u.getUTCFullYear())}، ` +
+    `${hmsClockToArabicWords(u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds())} بالتوقيت العالمي`
+  const localWeekdayIdx = format.weekdayIndexFromYMD(l.year, l.month, l.day)
   const localPart =
-    `${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)}، ` +
-    `${hmsClockToArabicWords(l.hour, l.minute)} بتوقيتكم المحلي`
+    `${format.weekdayNameArabic(localWeekdayIdx)}، ${arabicNumberToWords(l.day)} ${format.gregorianMonthNameArabic(l.month)} سنة ${arabicNumberToWords(l.year)}، ` +
+    `${hmsClockToArabicWords(l.hour, l.minute, l.second)} بتوقيتكم المحلي`
   return `أما تحري رؤية الهلال، فأقرب اقتران فلكي (محاق) يقع يوم ${utcPart}، أي يوم ${localPart}.`
 }
 
@@ -730,16 +738,21 @@ export function buildCrescentNarrationArabic (survey, localPartsFn) {
   return parts.join('\n\n')
 }
 
-/** نظير crescentConjunctionSentenceArabic بالفرنسية */
+/** نظير crescentConjunctionSentenceArabic بالفرنسية - انظر تعليقها لتفصيل إضافة السنة واسم يوم
+ * الأسبوع والثواني بطلب المستخدم. لا فاصلة بعد اسم اليوم بالفرنسية (خلافا للعربية) - نفس العادة
+ * الإملائية الفرنسية المعتمدة أصلا في crescentDaySentenceFrench/crescentFatihSentenceFrench
+ * أدناه ("lundi 12 octobre 2026" بلا فاصلة). */
 function crescentConjunctionSentenceFrench (conjunction) {
   const u = conjunction.utcDate
   const l = conjunction.local
+  const utcWeekdayIdx = u.getUTCDay()
   const utcPart =
-    `${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)}, ` +
-    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes())} en temps universel (UTC)`
+    `${format.weekdayNameFrench(utcWeekdayIdx)} ${frenchNumberToWords(u.getUTCDate())} ${format.gregorianMonthNameFrench(u.getUTCMonth() + 1)} ${frenchNumberToWords(u.getUTCFullYear())}, ` +
+    `à ${hmsClockToFrenchWords(u.getUTCHours(), u.getUTCMinutes(), u.getUTCSeconds())} en temps universel (UTC)`
+  const localWeekdayIdx = format.weekdayIndexFromYMD(l.year, l.month, l.day)
   const localPart =
-    `${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)}, ` +
-    `à ${hmsClockToFrenchWords(l.hour, l.minute)} à votre heure locale`
+    `${format.weekdayNameFrench(localWeekdayIdx)} ${frenchNumberToWords(l.day)} ${format.gregorianMonthNameFrench(l.month)} ${frenchNumberToWords(l.year)}, ` +
+    `à ${hmsClockToFrenchWords(l.hour, l.minute, l.second)} à votre heure locale`
   return `Quant à l'observation du croissant lunaire, la conjonction astronomique la plus proche (nouvelle lune) a lieu le ${utcPart}, soit le ${localPart}.`
 }
 
