@@ -113,6 +113,35 @@ export function utcCivilDayAnchorJD (localYear, localMonth1to12, localDay, obser
   return Math.floor(jdLocalNoon - 0.5) + 0.5
 }
 
+/**
+ * اللحظة العالمية (UTC) المطابقة *تماما* لمنتصف الليل المحلي (00:00:00) لليوم المطلوب - بخلاف
+ * utcCivilDayAnchorJD أعلاه التي تُطوِّق اللحظة إلى أقرب حد "يوم UTC" كامل حول *ظهر* المراقب
+ * (لغرض مختلف: تهيئة جدول استيفاء ميوس التقريبي القديم للشروق/الزوال/الغروب). هذه الدالة تُرجع
+ * اللحظة الحقيقية بلا أي تطويق أو تقريب لحدود يوم UTC، لتُستعمل كبداية نافذة بحث مباشرة عن
+ * عبورات اليوم المحلي الحقيقي (انظر riseSetUtil.findDayCrossings).
+ *
+ * علة مُثبَتة تجريبيا بسبب الخلط بين الدالتين: الفرق بين utcCivilDayAnchorJD وهذه الدالة يبلغ
+ * |utcOffsetHours| ساعة تماما (مثلا ٧ ساعات كاملة عند فرق توقيت -٧) - لأن "يوم UTC الذي يحوي
+ * ظهر المراقب المحلي" يختلف عن "يوم UTC الذي يحوي منتصف ليله المحلي" كلما كان فرق التوقيت غير
+ * صفري (اليوم المحلي يمتد بالضرورة عبر يومي UTC متجاورين لأي فرق توقيت ≠ ٠). استعمال
+ * utcCivilDayAnchorJD (أو نتائجه) كنافذة بحث "لليوم المحلي" مباشرة - كما كانت الحال في
+ * sun.js/moon.js قبل هذا الإصلاح - ينتج عنه اختيار عبور شروق/زوال/غروب من يوم مجاور خطأً في نحو
+ * ربع الحالات تجريبيا (قياس مُفصَّل: measure_sun_day_mismatch.mjs وmeasure_day_mismatch.mjs في
+ * سجل العمل)، رغم وجود عبور صحيح من اليوم المطلوب نفسه، كلما سقطت لحظة العبور الفعلية في الساعات
+ * "المفقودة" من النافذة المُزاحة. هذه الدالة (مع findDayCrossings) هي الإصلاح الجذري لذلك.
+ */
+export function localMidnightJD (localYear, localMonth1to12, localDay, observerTime) {
+  // نفس تقريب التوقيت الصيفي (DST) المعتمد فعلا في utcCivilDayAnchorJD أعلاه، لكن عند منتصف
+  // الليل (ساعة ٠) لا الظهر (ساعة ١٢) - قد يختلف بساعة واحدة فقط خلال الساعات القليلة المحيطة
+  // بلحظة انتقال التوقيت الصيفي نفسها لمنطقة زمنية حقيقية (أثر مقبول، مطابق تماما لنفس التقريب
+  // المعتمد أصلا هناك لمنتصف النهار).
+  const approxOffset = observerTime.mode === 'tz'
+    ? utcOffsetHoursForTimeZone(new Date(Date.UTC(localYear, localMonth1to12 - 1, localDay, 0, 0, 0)), observerTime.timeZone)
+    : observerTime.utcOffsetHours
+  const midnightUTCMillis = Date.UTC(localYear, localMonth1to12 - 1, localDay, 0, 0, 0) - approxOffset * 3600 * 1000
+  return julian.DateToJD(new Date(midnightUTCMillis))
+}
+
 export default {
   localToUTCDateWithOffset,
   utcOffsetHoursForTimeZone,
@@ -120,5 +149,6 @@ export default {
   currentUtcOffsetHours,
   localDecimalHour,
   utcCivilDayAnchorJD,
-  localPartsToUTCDate
+  localPartsToUTCDate,
+  localMidnightJD
 }

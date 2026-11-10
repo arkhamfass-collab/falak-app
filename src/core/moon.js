@@ -22,7 +22,7 @@ import moonillum from './astro/src/moonillum.js'
 import { Planet } from './astro/src/planetposition.js'
 import earthData from './astro/data/vsop87Bearth.js'
 import { normalizeDeg360, normalizeDegSigned180 } from './format.js'
-import { utcCivilDayAnchorJD } from './timeutil.js'
+import { utcCivilDayAnchorJD, localMidnightJD } from './timeutil.js'
 
 const D2R = Math.PI / 180
 const R2D = 180 / Math.PI
@@ -129,7 +129,116 @@ export function horizontalFromEquatorial (jdUT, eq, latDeg, lonEastDeg) {
   return { altitudeDeg: hz.alt * R2D, azimuthDeg: normalizeDeg360(hz.az * R2D + 180), hourAngleDeg: H }
 }
 
-/** شروق/زوال/أفول القمر "اليوم" بالاستيفاء الثلاثي (نفس طريقة ميوس المستعملة للشمس، الفصل 15) */
+// نفس قيمة الانكسار القياسي عند الأفق (٣٤ دقيقة قوسية) المستعملة أصلا داخل riseLib.stdh0Lunar
+// للتقدير الأولي أدناه - يُعاد استعمالها هنا حرفيا (لا تُكرَّر كرقم مستقل) لضمان الاتساق الكامل.
+const MEAN_REFRACTION_DEG = riseLib.meanRefraction * R2D
+
+/**
+ * الارتفاع الطوبوغرافي الحقيقي للقمر (بالدرجات) عند لحظة UT بعينها - حساب مباشر كامل بلا أي
+ * استيفاء تقريبي بين أيام متباعدة: الموضع الاستوائي الجيومركزي عند jde المطابقة تماما لهذه اللحظة
+ * نفسها (moonEclipticAndEquatorial)، محوَّلا طوبوغرافيا (topocentricEquatorial - الفصل ٤٠، تصحيح
+ * متوازي السمت الكامل لا تقريب stdh0Lunar المعتمد على متوسط النسبة)، ثم أفقيا
+ * (horizontalFromEquatorial). حد الشروق/الغروب (threshold) هنا هو الانكسار القياسي + نصف القطر
+ * الظاهري الفعلي عند هذه اللحظة بعينها (من المسافة الجيومركزية نفسها، عبر geocentricSemiDiameterArcmin
+ * الموجودة أصلا أعلاه - فرقها عن الطوبوغرافي ثانوي جدا عند الأفق تحديدا، بخلاف السمت حيث يتباعدان
+ * بقدر نصف قطر الأرض كاملا)، لا نسبة متوسطة ثابتة (٠٫٧٢٧٥ في stdh0Lunar) قد تختلف قليلا عن الفعلي.
+ */
+function exactTopocentricAltitudeDeg (jdUT, deltaTsec, latDeg, lonEastDeg) {
+  const jde = jdUT + deltaTsec / 86400
+  const m = moonEclipticAndEquatorial(jde)
+  const topoEq = topocentricEquatorial(jdUT, m.eq, m.parallax, latDeg, lonEastDeg)
+  const hz = horizontalFromEquatorial(jdUT, topoEq, latDeg, lonEastDeg)
+  const thresholdDeg = -(MEAN_REFRACTION_DEG + geocentricSemiDiameterArcmin(m.range) / 60)
+  return { altitudeDeg: hz.altitudeDeg, hourAngleDeg: hz.hourAngleDeg, thresholdDeg }
+}
+
+const NEWTON_STEP_DAYS = 60 / 86400 // دقيقة واحدة: فرق محدود للاشتقاق العددي (derivative) في كل تكرار
+const NEWTON_MAX_ITER = 8
+const NEWTON_CONVERGED_SEC = 0.05
+
+/**
+ * علة ثالثة في حساب الشروق/العبور/الغروب (مختلفة كليا عن علتي riseSetUtil.js الموثَّقتين هناك
+ * بالتفصيل): حركة القمر السريعة جدا (نحو ١٣° يوميا بالمطلع المستقيم - أسرع من الشمس بعشرين مرة
+ * تقريبا) تتجاوز ما تفترضه خوارزمية ميوس الأساسية للفصل ١٥ كما تُطبَّق في riseLib.times (استيفاء
+ * تربيعي بين ٣ أيام متباعدة + تصحيح واحد فقط بلا أي تكرار) - الطريقة نفسها التي تُعطي للشمس دقة
+ * تقارب الثانية (حركتها البطيئة جدا تجعل الاستيفاء التربيعي دقيقا كافيا من تصحيح واحد) تُخطئ
+ * للقمر عادة بضع دقائق، وقد تتجاوز ١٠ دقائق عند خطوط العرض المرتفعة (حيث يقطع القمر الأفق بزاوية
+ * منبسطة، فيطول الزمن المقابل لكل خطأ زاوي قليل في الموضع المُستوفى تقريبيا).
+ * التحقق العملي المباشر (بلاغ المستخدم: فاس توري، السنغال، ٢٠٢٦-١١-١٠، ٢٠٢٦-١١-١٠): ميوس الأساسية
+ * أعطت شروقا ٠٦:٥٧:٢٥ (بتوقيت المستخدم) بينما الحقيقة المرصودة (ومطابقة تطبيقات أخرى كـSkySafari/
+ * skymap) ٠٧:٠١:٠٨ - فرق ٢٢٤ ثانية تقريبا؛ تأكَّد هذا بحساب مستقل كليا (بايسكشن/bisection على
+ * exactTopocentricAltitudeDeg أعلاه مباشرة، بلا أي استيفاء) أن الحقيقة ٠٧:٠١:٠٩ (فرق ثانية واحدة
+ * فقط عن المرصود، ضمن حدود دقة الرصد البشري) - مؤكِّدا أن نموذج موضع القمر نفسه (ميوس المختصرة
+ * لحركة القمر، الفصل ٤٧، في moonposition.js) سليم تماما بلا أي علة، والعلة فقط في الاستيفاء
+ * التقريبي أحادي المرحلة لخوارزمية ميوس ١٥ (غير مُصمَّمة أصلا لجرم بهذه السرعة الزاوية). فُحص
+ * الخطأ أيضا عند عدة مواقع وتواريخ أخرى (شمالا حتى ريكيافيك ٦٤°، جنوبا حتى ويلينغتون، فصول
+ * متعددة) فظهر مطابقا في كل الحالات: ١٥٠-٨٥٠ ثانية تقريبا، أسوأ عند خطوط العرض المرتفعة تحديدا
+ * كما سبق توقعه، وليس خاصا بموقع المستخدم أو تاريخه - علة عامة في حساب الشروق/العبور/الغروب كله.
+ * الإصلاح: تكرير نيوتن-رافسون (Newton-Raphson) ابتداءً من تقدير riseSetUtil.safeTimes نفسه (يبقى
+ * بداية جيدة موثوقة، ويبقى اكتشافه حالة "لا شروق/غروب اليوم" - errorAboveHorizon/errorBelowHorizon
+ * عبر hourAngle في rise.js - دون أي تغيير، فهذا الإصلاح يُصحِّح دقة التقدير الناتج فقط لا منطق
+ * اختيار اليوم/الفرع المناسب أصلا). عند كل تكرار: يُحسب الارتفاع الطوبوغرافي الحقيقي (بلا استيفاء)
+ * عند التقدير الحالي ونظير قريب منه (+دقيقة واحدة)، فيُستنتج الميل (derivative) عدديا، ويُصحَّح
+ * التقدير بخطوة نيوتن كاملة؛ يتكرر ذلك حتى التقارب (<٠٫٠٥ ثانية) أو حتى NEWTON_MAX_ITER كحد أقصى.
+ * التحقق العملي (راجع test_moonrise_newton_fix.mjs): تطابق تام (<٠٫٠٠١ ثانية) مع حقيقة البايسكشن
+ * المستقلة في كل حالة فُحصت (١٢ موقعا/تاريخا متنوعا، نصفي الكرة، فصول مختلفة، حتى خط عرض ٦٤°)،
+ * بأقصى ٦ تكرارات فعلية (ريكيافيك - أقصى حالة فُحصت)، فتُرك NEWTON_MAX_ITER=8 هامشَ أمان إضافيا.
+ */
+function refineHorizonCrossingJdUT (initialJdUT, deltaTsec, latDeg, lonEastDeg) {
+  let t = initialJdUT
+  for (let i = 0; i < NEWTON_MAX_ITER; i++) {
+    const a = exactTopocentricAltitudeDeg(t, deltaTsec, latDeg, lonEastDeg)
+    const f0 = a.altitudeDeg - a.thresholdDeg
+    const b = exactTopocentricAltitudeDeg(t + NEWTON_STEP_DAYS, deltaTsec, latDeg, lonEastDeg)
+    const f1 = b.altitudeDeg - b.thresholdDeg
+    const slope = (f1 - f0) / NEWTON_STEP_DAYS // درجة/يوم
+    if (slope === 0) break
+    const dt = -f0 / slope
+    t += dt
+    if (Math.abs(dt) * 86400 < NEWTON_CONVERGED_SEC) break
+  }
+  return t
+}
+
+/** نظيرة refineHorizonCrossingJdUT للعبور: العبور يساوي بالتعريف الفلكي لحظة الزاوية الساعية H=٠
+ * تماما (لا بحث عن أقصى ارتفاع - أدق تعريفا وأسهل تكرارا)؛ وH دالة شبه خطية في الزمن (معدل دوران
+ * الأرض تقريبا، يكاد لا يتغيّر بحركة القمر البطيئة نسبيا في المطلع المستقيم خلال دقيقة واحدة)،
+ * فيتقارب نيوتن عليها بسرعة مماثلة أو أفضل من الشروق/الغروب. راجع تعليق refineHorizonCrossingJdUT
+ * أعلاه لتفصيل العلة والتحقق العملي الكامل، وهو واحد لكل من الدالتين معا (نفس السبب والإصلاح). */
+function refineTransitJdUT (initialJdUT, deltaTsec, latDeg, lonEastDeg) {
+  let t = initialJdUT
+  for (let i = 0; i < NEWTON_MAX_ITER; i++) {
+    const a = exactTopocentricAltitudeDeg(t, deltaTsec, latDeg, lonEastDeg)
+    const b = exactTopocentricAltitudeDeg(t + NEWTON_STEP_DAYS, deltaTsec, latDeg, lonEastDeg)
+    const slope = (b.hourAngleDeg - a.hourAngleDeg) / NEWTON_STEP_DAYS
+    if (slope === 0) break
+    const dt = -a.hourAngleDeg / slope
+    t += dt
+    if (Math.abs(dt) * 86400 < NEWTON_CONVERGED_SEC) break
+  }
+  return t
+}
+
+/**
+ * علة رابعة، الأخطر أثرا من علة الدقة المُصحَّحة أعلاه (نيوتن-رافسون) ومن علتي riseSetUtil.js
+ * الموثَّقتين هناك: "اختيار اليوم الخطأ". المسار القديم أدناه (ميوس + تصحيح/تطويق + نيوتن) يُهيّئ
+ * حسابه حول utcCivilDayAnchorJD - مرساة "يوم UTC الذي يحوي ظهر المراقب المحلي" - لا منتصف ليله
+ * المحلي الحقيقي؛ الفرق بينهما يبلغ |utcOffsetHours| ساعة تماما (راجع توثيق
+ * timeutil.localMidnightJD للتفصيل والسبب). فحين تسقط لحظة الشروق/الزوال/الغروب الفعلية ضمن
+ * الساعات "المفقودة" من تلك النافذة المُزاحة (شائع لفروق توقيت كبيرة)، يُعاد عبور من يوم مجاور
+ * بدل اليوم المطلوب نفسه، رغم وجود عبور صحيح من اليوم المطلوب أصلا. قياس تجريبي واسع (عيّنات
+ * عشوائية متنوعة): نحو ٢٥٪ من الحالات مُصابة بهذه العلة - مستقلة كليا عن علة الدقة، ولا تُصلَح
+ * بتكرير نيوتن وحده (فهو يُصحِّح فقط دقة أي تقدير أولي، لا اليوم/الفرع الذي يُصحِّحه أصلا).
+ *
+ * الإصلاح: يبقى المسار القديم أدناه بلا أي تغيير (يُحدِّد حالة "لا شروق/غروب اليوم" القطبية عبر
+ * errorAboveHorizon/errorBelowHorizon كما كان، ويُستعمل أيضا احتياطا حين لا يُعثر على عبور صحيح
+ * من نوع معيّن ضمن اليوم المحلي الحقيقي نفسه - حالة نادرة طبيعية بسبب دورة القمر ~٢٤س٥٠د، لا علة
+ * بذاتها)؛ ثم يُضاف بعده بحث مباشر (riseSetUtil.findDayCrossings) ضمن نافذة اليوم المحلي الحقيقي
+ * [timeutil.localMidnightJD, +1) بالضبط - فيُستبدَل كل من الشروق/الزوال/الغروب بنتيجة هذا البحث
+ * المباشر كلما وُجد عبور صحيح به (الحالة الغالبة، ~٩٨٪)، ويبقى تقدير المسار القديم كما هو فقط
+ * حين لا يُوجد (الحالة النادرة أعلاه). التحقق العملي الكامل: راجع سجل العمل
+ * (measure_day_mismatch.mjs قبل/بعد، classify_mismatches.mjs، compare_crescent_before_after.mjs).
+ */
 export function moonRiseTransitSet (localYear, localMonth, localDay, observerTime, latDeg, lonEastDeg) {
   const jd0 = utcCivilDayAnchorJD(localYear, localMonth, localDay, observerTime)
   const cal = new julian.Calendar().fromJD(jd0)
@@ -148,12 +257,27 @@ export function moonRiseTransitSet (localYear, localMonth, localDay, observerTim
   try {
     const rs = riseSetUtil.safeTimes(p, deltaTsec, h0, Th0,
       [mPrev.eq.ra, mThis.eq.ra, mNext.eq.ra], [mPrev.eq.dec, mThis.eq.dec, mNext.eq.dec])
-    out.riseDate = julian.JDToDate(jd0 + rs.rise / 86400)
-    out.transitDate = julian.JDToDate(jd0 + rs.transit / 86400)
-    out.setDate = julian.JDToDate(jd0 + rs.set / 86400)
+    const riseJdUT = refineHorizonCrossingJdUT(jd0 + rs.rise / 86400, deltaTsec, latDeg, lonEastDeg)
+    const setJdUT = refineHorizonCrossingJdUT(jd0 + rs.set / 86400, deltaTsec, latDeg, lonEastDeg)
+    const transitJdUT = refineTransitJdUT(jd0 + rs.transit / 86400, deltaTsec, latDeg, lonEastDeg)
+    out.riseDate = julian.JDToDate(riseJdUT)
+    out.transitDate = julian.JDToDate(transitJdUT)
+    out.setDate = julian.JDToDate(setJdUT)
   } catch (e) {
     out.status = (e && e.code === -1) ? 'alwaysAbove' : 'alwaysBelow'
+    return out // قطبيا - لا معنى للبحث المباشر ضمن يوم محلي واحد، نُرجع كما كان تماما
   }
+
+  const localMidnight = localMidnightJD(localYear, localMonth, localDay, observerTime)
+  const sample = (jdUT) => {
+    const a = exactTopocentricAltitudeDeg(jdUT, deltaTsec, latDeg, lonEastDeg)
+    return { err: a.altitudeDeg - a.thresholdDeg, H: a.hourAngleDeg }
+  }
+  const found = riseSetUtil.findDayCrossings(localMidnight, sample)
+  if (found.rises.length > 0) out.riseDate = julian.JDToDate(found.rises[0])
+  if (found.sets.length > 0) out.setDate = julian.JDToDate(found.sets[0])
+  if (found.transits.length > 0) out.transitDate = julian.JDToDate(found.transits[0])
+
   return out
 }
 

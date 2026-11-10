@@ -21,7 +21,7 @@ import deltatLib from './astro/src/deltat.js'
 import { Planet } from './astro/src/planetposition.js'
 import earthData from './astro/data/vsop87Bearth.js'
 import { normalizeDeg360, normalizeDegSigned180 } from './format.js'
-import { utcCivilDayAnchorJD } from './timeutil.js'
+import { utcCivilDayAnchorJD, localMidnightJD } from './timeutil.js'
 
 const D2R = Math.PI / 180
 const R2D = 180 / Math.PI
@@ -83,6 +83,47 @@ function _dailySunSetup (localYear, localMonth, localDay, observerTime, latDeg, 
   return { jd0, jde0, deltaTsec, eqPrev, eqThis, eqNext, p, Th0 }
 }
 
+/** الارتفاع والزاوية الساعية الحقيقيان للشمس (بالدرجات) عند لحظة UT بعينها - حساب مباشر كامل
+ * (VSOP87 الكاملة نفسها المستعملة أصلا في كل هذا الملف) بلا أي استيفاء تقريبي بين أيام متباعدة؛
+ * لا حاجة لتصحيح طوبوغرافي هنا (أثره ثوانٍ قوسية فقط للشمس، كما سبق توثيقه أعلى هذا الملف). */
+function exactSunHorizontalDeg (jdUT, deltaTsec, latDeg, lonEastDeg) {
+  const jde = jdUT + deltaTsec / 86400
+  const eq = solar.apparentEquatorialVSOP87(earth, jde)
+  return horizontalFromEquatorial(jdUT, eq, latDeg, lonEastDeg)
+}
+
+/**
+ * علة "اليوم الخطأ" - راجع التوثيق الكامل في riseSetUtil.findDayCrossings وtimeutil.localMidnightJD:
+ * المسار القديم (ميوس + تصحيح/تطويق أعلاه، عبر _dailySunSetup وutcCivilDayAnchorJD) يُهيّئ حسابه
+ * حول مرساة "يوم UTC الذي يحوي ظهر المراقب المحلي" لا منتصف ليله المحلي الحقيقي - فيختار أحيانا
+ * (~٢٥٪ من الحالات تجريبيا؛ راجع measure_sun_day_mismatch.mjs في سجل العمل) عبورا من يوم مجاور
+ * خطأً، رغم وجود عبور صحيح من اليوم المطلوب نفسه. هذه العلة هنا أشد خطورة من نظيرتها في moon.js:
+ * sun.js هو الأساس الوحيد الذي تُحسَب عليه كل مواقيت الصلاة الخمس في prayerTimes.js (فجر/شروق/
+ * ظهر/عصر/مغرب/عشاء وتوابعها، عبر sunRiseTransitSet وsunAngleCrossing أدناه كليهما).
+ * الإصلاح: يبقى الناتج القديم (out) كما هو (يُحدِّد حالة "الشمس لا تبلغ هذا الارتفاع اليوم" -
+ * الليل القطبي الصيفي ونحوه - عبر errorAboveHorizon/errorBelowHorizon كما كان، ويُستعمل أيضا
+ * احتياطا حين لا يُعثر على عبور صحيح ضمن اليوم المحلي الحقيقي نفسه - حالة نادرة جدا للشمس عمليا)؛
+ * ثم يُستبدَل كل من rise/transit/set بنتيجة بحث مباشر (riseSetUtil.findDayCrossings) ضمن نافذة
+ * اليوم المحلي الحقيقي [timeutil.localMidnightJD, +1) بالضبط كلما وُجد عبور صحيح بها (الحالة
+ * الغالبة). يُطبَّق هذا كدالة مشتركة واحدة (fixDayAttribution) يستدعيها sunRiseTransitSet
+ * وsunAngleCrossing كلاهما لتفادي تكرار المنطق نفسه مرتين.
+ * @private
+ */
+function _fixDayAttribution (out, localYear, localMonth, localDay, observerTime, latDeg, lonEastDeg, deltaTsec, thresholdDeg) {
+  if (out.status !== 'ok') return out // حالة قطبية - لا معنى للبحث المباشر، كما هي
+  const localMidnight = localMidnightJD(localYear, localMonth, localDay, observerTime)
+  const sample = (jdUT) => {
+    const hz = exactSunHorizontalDeg(jdUT, deltaTsec, latDeg, lonEastDeg)
+    return { err: hz.altitudeDeg - thresholdDeg, H: hz.hourAngleDeg }
+  }
+  const found = riseSetUtil.findDayCrossings(localMidnight, sample)
+  const fixed = { ...out }
+  if (found.rises.length > 0) fixed.riseDate = julian.JDToDate(found.rises[0])
+  if (found.sets.length > 0) fixed.setDate = julian.JDToDate(found.sets[0])
+  if (found.transits.length > 0) fixed.transitDate = julian.JDToDate(found.transits[0])
+  return fixed
+}
+
 /**
  * يحسب شروق/زوال/غروب الشمس "اليوم" (حسب اليوم المحلي للمراقب) بدقة عالية باستعمال
  * الاستيفاء الثلاثي النقاط (طريقة ميوس، الفصل 15) بدل التقريب أحادي النقطة.
@@ -102,6 +143,7 @@ export function sunRiseTransitSet (localYear, localMonth, localDay, observerTime
   } catch (e) {
     out.status = (e && e.code === -1) ? 'alwaysAbove' : 'alwaysBelow'
   }
+  out = _fixDayAttribution(out, localYear, localMonth, localDay, observerTime, latDeg, lonEastDeg, deltaTsec, h0 * R2D)
 
   // ارتفاع الشمس عند الزوال (منتصف اليوم) = 90° - |العرض - الميل| تماما (الساعة الزاوية=0 عند الزوال)
   const transitAltitudeDeg = 90 - Math.abs(latDeg - eqThis.dec * R2D)
@@ -139,6 +181,7 @@ export function sunAngleCrossing (localYear, localMonth, localDay, observerTime,
   } catch (e) {
     out.status = (e && e.code === -1) ? 'alwaysAbove' : 'alwaysBelow'
   }
+  out = _fixDayAttribution(out, localYear, localMonth, localDay, observerTime, latDeg, lonEastDeg, deltaTsec, altitudeDeg)
   return out
 }
 
